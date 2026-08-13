@@ -10,6 +10,7 @@
  */
 
 import express, { type NextFunction, type Request, type Response } from 'express';
+import cors from 'cors';
 import categoriesRouter from './routes/categories.routes.js';
 import usersRouter from './routes/users.routes.js';
 
@@ -18,6 +19,12 @@ import usersRouter from './routes/users.routes.js';
  */
 export function createApp() {
   const app = express();
+
+  // Allow the frontend (a different origin in dev: :5173 → :4000) to call the
+  // API. FRONTEND_URL overrides the dev default. Without this, the browser
+  // blocks cross-origin requests before they reach any route.
+  const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:5173';
+  app.use(cors({ origin: frontendUrl, credentials: true }));
 
   // Parse JSON request bodies into req.body.
   app.use(express.json());

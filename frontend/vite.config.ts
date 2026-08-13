@@ -6,10 +6,11 @@
 
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   server: {
     // Dev server port. 5173 is Vite's default; set explicitly so it's obvious
     // and doesn't collide with the backend (which runs on 4000).

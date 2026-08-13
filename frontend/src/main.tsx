@@ -9,6 +9,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import { AuthProvider } from './lib/auth';
+import './index.css';
 
 // The "!" tells TypeScript we're certain #root exists (it's in index.html).
 const rootElement = document.getElementById('root')!;
@@ -18,6 +20,8 @@ createRoot(rootElement).render(
   // surface accidental side effects and unsafe patterns early. It renders
   // nothing itself and is stripped from the production build.
   <StrictMode>
-    <App />
+    <AuthProvider>
+      <App />
+    </AuthProvider>
   </StrictMode>,
 );
