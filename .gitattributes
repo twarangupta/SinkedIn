@@ -1,0 +1,32 @@
+# Normalize line endings across platforms.
+#
+# WHY: without this, Windows checkouts store CRLF while macOS/Linux store LF,
+# producing noisy "LF will be replaced by CRLF" warnings and spurious diffs.
+# `text=auto` tells Git to store text files with LF in the repo and convert to
+# the OS native ending on checkout. The explicit rules below remove ambiguity.
+
+# Default: let Git detect text vs binary and normalize text to LF in the repo.
+* text=auto eol=lf
+
+# Explicitly treat common source/text files as LF text.
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.js   text eol=lf
+*.jsx  text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.html text eol=lf
+*.css  text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.prisma text eol=lf
+*.env  text eol=lf
+
+# Binary files: never touch line endings.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.woff  binary
+*.woff2 binary
