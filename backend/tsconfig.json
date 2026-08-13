@@ -30,5 +30,7 @@
     "skipLibCheck": true
   },
   "include": ["src"],
-  "exclude": ["node_modules", "dist"]
+  // Test files are transpiled/run by Vitest, not shipped in the production
+  // build, so keep them out of the tsc output (dist/).
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }

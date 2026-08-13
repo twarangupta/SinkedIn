@@ -1,0 +1,102 @@
+# Continuous Integration — runs on every push to `development` and every PR
+# targeting `main`. Two independent jobs (backend, frontend) so a failure
+# points straight at the side that broke.
+#
+# WHY THIS EXISTS: it mechanically enforces "main is always green". Tests and
+# lint run automatically; a red run blocks the merge. No relying on remembering
+# to run `npm test` locally.
+
+name: CI
+
+on:
+  push:
+    branches: [development]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend (lint · build · test)
+    runs-on: ubuntu-latest
+
+    # A throwaway Postgres for the test database — mirrors the local Docker
+    # setup, but on the standard port inside the isolated CI runner.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: sinkedin_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Tests talk to the service container above. In CI there is no .env.test
+      # file, so these job-level vars are what the Prisma client reads.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sinkedin_test?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/sinkedin_test?schema=public
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      # `npm ci` installs exactly the locked versions — reproducible, unlike
+      # `npm install` which can update the lockfile.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Apply migrations to the test database
+        run: npx prisma migrate deploy
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+  frontend:
+    name: Frontend (lint · build)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
