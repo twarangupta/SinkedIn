@@ -1,19 +1,27 @@
 /**
- * Root application component — placeholder only.
+ * Root component — routes on auth state.
  *
- * The project is scaffolded but featureless. As the UI is built, this file
- * will compose the app from small presentational primitives (SinkCard,
- * CategoryPill, BuoyButton, ...) and route between pages. For now it just
- * confirms the toolchain renders.
+ * While the session is loading, show a minimal loading state. Then: signed in →
+ * the app (HomePage); signed out → the AuthPage. Wrapped in AuthProvider by
+ * main.tsx, so useAuth is available here.
  */
 
+import { useAuth } from './lib/auth';
+import { AuthPage } from './pages/AuthPage';
+import { HomePage } from './pages/HomePage';
+
 function App() {
-  return (
-    <main>
-      <h1>SinkedIn</h1>
-      <p>Scaffold is live. No features yet.</p>
-    </main>
-  );
+  const { session, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-ink-3">
+        Loading…
+      </div>
+    );
+  }
+
+  return session ? <HomePage /> : <AuthPage />;
 }
 
 export default App;
