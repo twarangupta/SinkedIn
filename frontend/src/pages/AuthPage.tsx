@@ -41,9 +41,9 @@ export function AuthPage() {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <h1 className="font-display text-3xl font-bold">
-            Sinked<span className="text-violet">.in</span>
+            SinkedIn<span className="text-violet">.in</span>
           </h1>
-          <p className="mt-1 text-sm text-ink-3">The real side of the job hunt.</p>
+          <p className="mt-1 text-sm text-ink-3">The real side of the job market.</p>
         </div>
 
         <div className="rounded-2xl border border-line bg-surface p-6">
