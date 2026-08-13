@@ -11,6 +11,7 @@
 
 import express, { type NextFunction, type Request, type Response } from 'express';
 import categoriesRouter from './routes/categories.routes.js';
+import usersRouter from './routes/users.routes.js';
 
 /**
  * Create a fully-wired Express app.
@@ -28,6 +29,7 @@ export function createApp() {
 
   // --- Feature routers, all under the versioned /api/v1 prefix ---
   app.use('/api/v1/categories', categoriesRouter);
+  app.use('/api/v1/users', usersRouter);
   // Future: app.use('/api/v1/sinks', sinksRouter); etc.
 
   // --- Centralized error handler (must be LAST, and must take 4 args so
