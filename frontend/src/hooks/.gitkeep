@@ -1,0 +1,2 @@
+# hooks/ — data-fetching and stateful logic lives here, not in components.
+# e.g. useFeed, useSink. Components stay presentational; hooks feed them data.

@@ -1,0 +1,3 @@
+# services/ — ALL business logic. The layer that gets unit-tested (Vitest).
+# The ONLY layer allowed to import the Prisma client (src/lib/prisma.ts).
+# e.g. createSink(), getFeed(), castBuoy().

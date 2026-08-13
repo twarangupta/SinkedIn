@@ -1,0 +1,3 @@
+# controllers/ — HTTP concerns ONLY.
+# Read the request, call a service, shape the response. No business logic,
+# no Prisma calls. Controllers translate HTTP <-> service calls.

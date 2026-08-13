@@ -1,0 +1,25 @@
+// SinkedIn — Prisma schema (source of truth for all data shapes).
+//
+// This file intentionally contains NO models yet — the project is being
+// scaffolded and no features exist. Models (User, Sink, Category, Vote,
+// Comment, PollOption, PollVote) will be added as features are built.
+//
+// Two blocks are defined:
+//   - generator: what Prisma produces (the type-safe query client).
+//   - datasource: which database we connect to and how.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+
+  // Pooled connection used by the app at runtime (e.g. Supabase's
+  // PgBouncer pooler). This is what serves normal queries.
+  url = env("DATABASE_URL")
+
+  // Direct (non-pooled) connection used by Prisma Migrate for schema
+  // changes, which need a real session the pooler can't provide.
+  directUrl = env("DIRECT_URL")
+}

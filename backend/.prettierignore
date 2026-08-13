@@ -1,0 +1,6 @@
+# Don't format generated or build output.
+dist/
+node_modules/
+
+# Prisma generates client code we don't hand-edit.
+prisma/generated/

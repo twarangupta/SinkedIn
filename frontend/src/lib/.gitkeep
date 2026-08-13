@@ -1,0 +1,2 @@
+# lib/ — frontend utilities and shared clients (e.g. the API client, the
+# Supabase browser client). Framework-agnostic helpers, no JSX.

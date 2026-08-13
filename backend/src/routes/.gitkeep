@@ -1,0 +1,3 @@
+# routes/ — endpoint definitions + middleware wiring ONLY.
+# Each file maps HTTP paths to controller functions and attaches middleware
+# (auth, Zod validation). No business logic, no Prisma calls here.

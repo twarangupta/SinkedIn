@@ -1,0 +1,10 @@
+{
+  /* Root tsconfig. It doesn't compile files itself — it delegates to two
+     project files via references, because the app and the build tooling run
+     in different environments (browser vs. Node). */
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}

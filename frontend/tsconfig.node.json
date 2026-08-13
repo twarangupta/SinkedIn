@@ -1,0 +1,17 @@
+{
+  /* Config for Vite's OWN config file, which runs in Node (not the browser).
+     That's why its lib is ES2023 with no DOM — there is no `window` here. */
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+
+    "strict": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "moduleDetection": "force"
+  },
+  "include": ["vite.config.ts"]
+}

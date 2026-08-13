@@ -1,0 +1,3 @@
+# components/ — presentational primitives. Take data as props and render.
+# No data-fetching here. e.g. SinkCard, CategoryPill, BuoyButton,
+# SinkComposeForm, PollBlock, CommentThread.

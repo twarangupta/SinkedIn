@@ -1,0 +1,3 @@
+# Don't format build output or dependencies.
+dist/
+node_modules/

@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    /* Language & module system ------------------------------------------- */
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+
+    /* Emit --------------------------------------------------------------- */
+    "outDir": "dist",
+    "rootDir": "src",
+    "sourceMap": true,
+    "declaration": false,
+
+    /* Per CLAUDE.md: strip comments from the compiled production JS.
+       Source stays fully documented; the build ships without comments. */
+    "removeComments": true,
+
+    /* Type-checking strictness ------------------------------------------- */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "forceConsistentCasingInFileNames": true,
+
+    /* Interop & ergonomics ----------------------------------------------- */
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}
