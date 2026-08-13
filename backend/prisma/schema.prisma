@@ -1,12 +1,8 @@
 // SinkedIn — Prisma schema (source of truth for all data shapes).
 //
-// This file intentionally contains NO models yet — the project is being
-// scaffolded and no features exist. Models (User, Sink, Category, Vote,
-// Comment, PollOption, PollVote) will be added as features are built.
-//
-// Two blocks are defined:
-//   - generator: what Prisma produces (the type-safe query client).
-//   - datasource: which database we connect to and how.
+// Phase 0/1 scope only. Models reproduced from the technical spec
+// (docs/SinkedIn_Tech_Spec_Phase0_1.md) — the exact source of truth.
+// More tables are added in later phases; do not build ahead of the spec.
 
 generator client {
   provider = "prisma-client-js"
@@ -16,10 +12,137 @@ datasource db {
   provider = "postgresql"
 
   // Pooled connection used by the app at runtime (e.g. Supabase's
-  // PgBouncer pooler). This is what serves normal queries.
+  // PgBouncer pooler). For local development this points at the local
+  // Postgres. This is what serves normal queries.
   url = env("DATABASE_URL")
 
   // Direct (non-pooled) connection used by Prisma Migrate for schema
-  // changes, which need a real session the pooler can't provide.
+  // changes, which need a real session the pooler can't provide. For local
+  // development set this to the same value as DATABASE_URL.
   directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id             String     @id @default(uuid())
+  supabaseUserId String     @unique // Supabase Auth user id, never exposed publicly
+  handle         String     @unique // e.g. "Rejected_Raccoon_402" — public-facing
+  createdAt      DateTime   @default(now())
+  sinks          Sink[]
+  votes          Vote[]
+  comments       Comment[]
+  pollVotes      PollVote[]
+}
+
+// A Sink is a Reddit-style post: always a title + body, categorized by a category.
+// Depending on the category, the compose form reveals a few optional extra fields
+// (company, conclusion, poll options). Those fields are shared/optional on the
+// Sink itself — NOT separate per-category tables — so the model stays simple.
+model Sink {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  title      String // every Sink has a title
+  body       String?  @db.Text // the main text (optional for e.g. pure Poll)
+
+  // --- optional category-conditional fields (nullable; only some categories use them) ---
+  company         String? // shown for Interview Experience, Rejection, Ghosted, etc.
+  conclusion      Conclusion? // shown for Interview Experience / Offer etc.
+  conclusionOther String? // free text, used only when conclusion = OTHER
+  // poll options live in the PollOption table below (one-to-many)
+
+  score      Int       @default(0) // cached buoy score for ranking (buoys - anchors)
+  isVerified Boolean   @default(false) // Phase 4 — always false in Phase 1
+  deletedAt  DateTime? // soft delete, never hard-delete
+  createdAt  DateTime  @default(now())
+
+  votes       Vote[]
+  comments    Comment[]
+  pollOptions PollOption[]
+
+  @@index([categoryId])
+  @@index([createdAt])
+  @@index([score])
+}
+
+// Categories are their own table so new ones can be added with NO code/schema change.
+// The `config` fields describe which optional inputs the compose form reveals.
+model Category {
+  id              String  @id @default(uuid())
+  name            String  @unique // "Interview Experience", "Discussion", "Poll", ...
+  slug            String  @unique // "interview-experience"
+  color           String // hex or token for the category pill
+  showsCompany    Boolean @default(false)
+  showsConclusion Boolean @default(false)
+  allowsPoll      Boolean @default(false) // optional poll (Discussion, Advice)
+  requiresPoll    Boolean @default(false) // poll mandatory (Poll category)
+  sinks           Sink[]
+}
+
+enum Conclusion {
+  GHOSTED
+  REJECTED
+  ACCEPTED
+  WITHDREW
+  PENDING
+  OTHER // when picked, the free-text conclusionOther field is used
+}
+
+// --- Voting: "Buoys" (up) and "Anchors" (down) — our themed two-way vote. ---
+// Buoy lifts a Sink toward the surface; anchor sinks it. score = buoys - anchors.
+enum VoteValue {
+  BUOY // +1, up arrow, lift it up
+  ANCHOR // -1, down arrow, sink it
+}
+
+model Vote {
+  id        String    @id @default(uuid())
+  sinkId    String
+  sink      Sink      @relation(fields: [sinkId], references: [id])
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  value     VoteValue
+  createdAt DateTime  @default(now())
+
+  @@unique([sinkId, userId]) // one vote per user per Sink
+}
+
+// --- Polls (Phase 1): a Sink can carry options; users vote on one. ---
+model PollOption {
+  id       String     @id @default(uuid())
+  sinkId   String
+  sink     Sink       @relation(fields: [sinkId], references: [id])
+  label    String
+  position Int // display order
+  votes    PollVote[]
+}
+
+model PollVote {
+  id           String     @id @default(uuid())
+  pollOptionId String
+  option       PollOption @relation(fields: [pollOptionId], references: [id])
+  userId       String
+  user         User       @relation(fields: [userId], references: [id])
+  createdAt    DateTime   @default(now())
+  // NOTE: enforce "one vote per poll (not per option)" in the service layer.
+
+  @@unique([pollOptionId, userId])
+}
+
+// --- Comments (Phase 1): Reddit needs them. Threaded via optional parentId. ---
+model Comment {
+  id        String    @id @default(uuid())
+  sinkId    String
+  sink      Sink      @relation(fields: [sinkId], references: [id])
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  body      String    @db.Text
+  parentId  String? // null = top-level; set = reply (threading)
+  parent    Comment?  @relation("Thread", fields: [parentId], references: [id])
+  replies   Comment[] @relation("Thread")
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([sinkId])
 }
