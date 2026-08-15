@@ -1,2 +1,0 @@
-# pages/ — screen-level components composed from primitives in components/.
-# Each page maps to a route and wires hooks to presentational components.

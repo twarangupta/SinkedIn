@@ -1,4 +1,5 @@
-/* eslint-disable react-refresh/only-export-components */
+'use client';
+
 /**
  * Auth context — the single source of truth for "who is signed in".
  *

@@ -20,6 +20,7 @@ export interface PublicCategory {
   name: string;
   slug: string;
   color: string;
+  description: string | null;
   showsCompany: boolean;
   showsConclusion: boolean;
   allowsPoll: boolean;
@@ -39,6 +40,7 @@ export async function getCategories(): Promise<PublicCategory[]> {
       name: true,
       slug: true,
       color: true,
+      description: true,
       showsCompany: true,
       showsConclusion: true,
       allowsPoll: true,

@@ -73,6 +73,7 @@ model Category {
   name            String  @unique // "Interview Experience", "Discussion", "Poll", ...
   slug            String  @unique // "interview-experience"
   color           String // hex or token for the category pill
+  description     String? // one-line hint shown in the compose "what's this?" modal
   showsCompany    Boolean @default(false)
   showsConclusion Boolean @default(false)
   allowsPoll      Boolean @default(false) // optional poll (Discussion, Advice)
