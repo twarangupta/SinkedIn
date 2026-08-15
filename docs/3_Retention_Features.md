@@ -60,6 +60,21 @@ This is a lens, not a build task. It mainly means: don't scope the data model so
 
 ---
 
+## 6. Category reactions / solidarity taps — *Phase 1b–2*
+
+**What:** one-tap, category-specific reactions on a Sink, beyond the buoy/anchor vote — e.g. Rant → "Been there" / "IKR" / "Oof"; Rejection → "F" / "Their loss"; Ghosted → "Classic" / "Same"; Comeback → "Let's go" / "Inspiring". A lightweight emotional/solidarity layer.
+
+**Why it retains:** a one-tap reaction is lower friction than a comment, so far more people engage; it directly serves the "you're not alone" belonging hook (item 3) and fits the confessional, darkly-funny voice. Reaction counts can later feed the "not alone" counter.
+
+**Design notes (decide deliberately when built):**
+- **Separate from Buoys/Anchors.** Voting stays the ranking signal (`score`); reactions are emotional solidarity with **no effect on score** — keep them visually and functionally distinct so it isn't confusing.
+- **Config-driven per category** — the reaction set is data on the `Category` (like the `showsCompany` / `allowsPoll` flags), so adding reactions to a new category is a *data* change, not code. Needs a small schema addition (a `Reaction` table + per-category reaction config) when built.
+- One reaction per user per Sink (per type, or one total) — decide at build time.
+
+**Status vs. current plan:** **new** — not in the roadmap yet. Adjacent to item 3 (solidarity). **Gate:** build only after the core loop (post / vote / comment) is live and has users proving they engage. Do NOT build ahead.
+
+---
+
 ## One-glance phase map
 
 | Retention feature | Phase | In plan already? | Phase 0/1 action |
@@ -69,5 +84,6 @@ This is a lens, not a build task. It mainly means: don't scope the data model so
 | "Not alone" counter + Ghost timer | 2 | Mostly new | none (uses free-text company) |
 | Comeback flow + card | 2 / 5 | Yes | none |
 | Resilience streak (safe gamification) | 4 | Partial | none |
+| Category reactions / solidarity taps | 1b–2 | New | none |
 
 **Reminder:** none of these are Phase 0/1 build items. The only thing they ask of Phase 1 is *don't pollute the Interview Experience data*, so the SEO hub has clean input later. Everything else waits for its gate.
