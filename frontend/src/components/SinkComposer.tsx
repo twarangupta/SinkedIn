@@ -41,6 +41,15 @@ export function SinkComposer({ categories }: { categories: Category[] }) {
 
   const category = categories.find((c) => c.id === categoryId);
 
+  // Data hygiene for the future SEO Interview-Experience hub (see
+  // docs/3_Retention_Features.md): a category-aware placeholder nudges cleanly
+  // structured input now WITHOUT building a form or changing the schema. The
+  // body stays free text — the soul is the wedge vs. soulless data dumps.
+  const bodyPlaceholder =
+    category?.slug === 'interview-experience'
+      ? 'Rounds, questions asked, difficulty, and how it ended…'
+      : 'Say more (optional)';
+
   const reset = () => {
     setExpanded(false);
     setCategoryId('');
@@ -156,7 +165,7 @@ export function SinkComposer({ categories }: { categories: Category[] }) {
         maxLength={200}
       />
       <textarea
-        placeholder="Say more (optional)"
+        placeholder={bodyPlaceholder}
         value={body}
         onChange={(e) => setBody(e.target.value)}
         rows={3}
