@@ -6,8 +6,9 @@ Place this file at the repo root. It is read every session — keep it current a
 A Reddit-style, pseudonymous community for the honest, darkly-funny side of the job hunt (the anti-LinkedIn). The core object is a **Sink**: a text post (title + body) categorized by a **Category**. The moat is community + content, not proprietary data.
 
 ## Stack
-Node + Express + TypeScript backend, React + TypeScript (Vite) frontend, PostgreSQL via Prisma, Zod for validation, **Supabase Auth** for identity, Vitest for tests.
-Hosting (all free tier): Vercel (frontend), Render (backend), Supabase (Postgres + Auth). No AI in Phase 0/1.
+Node + Express + TypeScript backend, **Next.js (App Router) + React + TypeScript** frontend (SSR for SEO), PostgreSQL via Prisma, Zod for validation, **Supabase Auth** for identity, Vitest for tests.
+Hosting (all free tier): Vercel (frontend, Next.js preset), Render (backend), Supabase (Postgres + Auth). No AI in Phase 0/1.
+Frontend was migrated from Vite to Next.js so public pages server-render for SEO + social share previews; the Express backend is unchanged.
 
 ## Architecture — separation of concerns (strict)
 Backend layering, every request follows it:
@@ -22,7 +23,11 @@ Rules:
 - Controllers hold no business logic; they translate HTTP ↔ service calls.
 - Point work at one layer at a time; don't tangle concerns across layers.
 
-Frontend: components take data as props and render (presentational); data-fetching lives in hooks (`useFeed`, `useSink`). Build small primitives (`SinkCard`, `CategoryPill`, `BuoyButton`, `SinkComposeForm`, `PollBlock`, `CommentThread`) and compose screens from them.
+Frontend (Next.js App Router):
+- **Public reads are server components** — they fetch from the Express API via `src/lib/server-api.ts` and server-render, so pages are SEO-indexable (real HTML + per-page/OpenGraph metadata via `generateMetadata`). Pages live in `src/app/` (`page.tsx` = feed, `s/[id]/page.tsx` = single Sink).
+- **Interactive pieces are client components** (`'use client'`): composer, vote controls, auth modal, header. Mutations go through the client `src/lib/api.ts` helper, which attaches the Supabase JWT.
+- Presentational primitives take data as props (`SinkCard`, `CategoryPill`, `VoteControl`, `SinkComposer`, `PollBlock`, `CommentThread`); compose pages from them.
+- Browser env vars use the `NEXT_PUBLIC_` prefix. Dev server runs on port **5173** (matches backend CORS `FRONTEND_URL`).
 
 ## Schema ground truth
 `prisma/schema.prisma` is the source of truth for all data shapes. Always read it before writing code that touches User, Sink, Category, Vote, Comment, PollOption, or PollVote. Never invent or rename field names — if unsure, read the schema first.

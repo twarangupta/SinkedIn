@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Auth form — sign in / sign up. Used inside the sign-in modal (public-first
  * model). Calls onSuccess after a successful sign in/up (to close the modal).

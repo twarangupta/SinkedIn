@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * VoteControl — Buoy (up) / Anchor (down) with the live score.
  *

@@ -1,10 +1,12 @@
+'use client';
+
 /**
  * Top header bar — wordmark (links home), search (stub), and the auth area.
  * Fetches the current user's handle itself, so any page can just render <Header/>.
  */
 
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { useAuth } from '../../lib/auth';
 import { useAuthModal } from '../../lib/authModal';
 import { apiFetch } from '../../lib/api';
@@ -28,7 +30,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-6">
-        <Link to="/" className="w-52 shrink-0">
+        <Link href="/" className="w-52 shrink-0">
           <span className="font-display text-xl font-bold">
             SinkedIn<span className="text-violet">.in</span>
           </span>
