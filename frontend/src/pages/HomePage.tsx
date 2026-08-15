@@ -1,88 +1,65 @@
 /**
- * Home — logged-in placeholder.
- *
- * Proves the full pipeline end to end: the Supabase session's JWT is attached
- * to API calls, the backend verifies it and returns the pseudonymous handle
- * (/users/me), and we render live categories from /categories. The real feed +
- * composer come with the posting-loop slices; this is the authenticated shell.
+ * Home / feed — the main screen. Public-first: renders for everyone; the
+ * composer and vote controls prompt sign-in when logged out.
  */
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { apiFetch } from '../lib/api';
-import { Button } from '../components/ui/Button';
-
-interface Me {
-  id: string;
-  handle: string;
-  createdAt: string;
-}
-
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  color: string;
-}
+import { useCategories } from '../hooks/useCategories';
+import { useFeed } from '../hooks/useFeed';
+import { Header } from '../components/layout/Header';
+import { Sidebar } from '../components/layout/Sidebar';
+import { RightSidebar } from '../components/layout/RightSidebar';
+import { SinkComposer } from '../components/SinkComposer';
+import { SinkCard } from '../components/SinkCard';
 
 export function HomePage() {
-  const { signOut } = useAuth();
-  const [me, setMe] = useState<Me | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const { session } = useAuth();
+  const categories = useCategories();
+  const { sinks, loading, refresh } = useFeed();
+  const [handle, setHandle] = useState<string>();
 
   useEffect(() => {
-    apiFetch<{ user: Me }>('/api/v1/users/me')
-      .then((res) => setMe(res.user))
-      .catch((err) => setError(err.message));
-    apiFetch<{ categories: Category[] }>('/api/v1/categories')
-      .then((res) => setCategories(res.categories))
+    if (!session) {
+      setHandle(undefined);
+      return;
+    }
+    apiFetch<{ user: { handle: string } }>('/api/v1/users/me')
+      .then((res) => setHandle(res.user.handle))
       .catch(() => undefined);
-  }, []);
+  }, [session]);
 
   return (
     <div className="min-h-screen">
-      <header className="border-b border-line bg-surface">
-        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
-          <span className="font-display text-xl font-bold">
-            Sinked<span className="text-violet">.in</span>
-          </span>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-ink-2">{me ? me.handle : '…'}</span>
-            <Button variant="ghost" onClick={signOut}>
-              Sign out
-            </Button>
-          </div>
-        </div>
-      </header>
+      <Header handle={handle} />
+      <div className="mx-auto flex max-w-6xl gap-6 px-6 py-6">
+        <Sidebar />
 
-      <main className="mx-auto max-w-5xl px-6 py-10">
-        <h1 className="mb-2 font-display text-2xl font-medium">
-          You&apos;re in{me ? `, ${me.handle}` : ''}.
-        </h1>
-        <p className="mb-8 text-ink-3">
-          Auth works end to end. The feed comes next — here are the live
-          categories straight from the API:
-        </p>
+        <main className="min-w-0 flex-1 space-y-4">
+          <SinkComposer categories={categories} onCreated={refresh} />
 
-        {error && <p className="mb-4 text-danger">{error}</p>}
-
-        <div className="flex flex-wrap gap-2">
-          {categories.map((category) => (
-            <span
-              key={category.id}
-              className="rounded-full border px-3 py-1 text-sm"
-              style={{
-                color: category.color,
-                borderColor: `${category.color}55`,
-                backgroundColor: `${category.color}18`,
-              }}
-            >
-              {category.name}
+          <div className="flex gap-4 border-b border-line text-sm">
+            <span className="border-b-2 border-primary pb-2 font-medium text-ink">
+              For you
             </span>
-          ))}
-        </div>
-      </main>
+            <span className="pb-2 text-ink-3">Trending</span>
+            <span className="pb-2 text-ink-3">Latest</span>
+          </div>
+
+          {loading ? (
+            <p className="text-ink-3">Loading feed…</p>
+          ) : sinks.length === 0 ? (
+            <p className="py-8 text-center text-ink-3">
+              Nothing&apos;s sunk yet. Be the first to overshare.
+            </p>
+          ) : (
+            sinks.map((sink) => <SinkCard key={sink.id} sink={sink} />)
+          )}
+        </main>
+
+        <RightSidebar categories={categories} />
+      </div>
     </div>
   );
 }

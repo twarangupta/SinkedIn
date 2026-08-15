@@ -1,17 +1,16 @@
 /**
- * Root component — routes on auth state.
+ * Root component — PUBLIC-FIRST.
  *
- * While the session is loading, show a minimal loading state. Then: signed in →
- * the app (HomePage); signed out → the AuthPage. Wrapped in AuthProvider by
- * main.tsx, so useAuth is available here.
+ * The app (feed) renders for everyone; there's no login wall. The AuthModal
+ * overlays on demand when a logged-out user triggers a gated action.
  */
 
 import { useAuth } from './lib/auth';
-import { AuthPage } from './pages/AuthPage';
 import { HomePage } from './pages/HomePage';
+import { AuthModal } from './components/AuthModal';
 
 function App() {
-  const { session, loading } = useAuth();
+  const { loading } = useAuth();
 
   if (loading) {
     return (
@@ -21,7 +20,12 @@ function App() {
     );
   }
 
-  return session ? <HomePage /> : <AuthPage />;
+  return (
+    <>
+      <HomePage />
+      <AuthModal />
+    </>
+  );
 }
 
 export default App;
