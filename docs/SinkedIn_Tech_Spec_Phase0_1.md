@@ -8,7 +8,7 @@ Companion to `SinkedIn_PRD.md`. This covers only what's needed to build Phase 0 
 
 | Layer | Choice |
 |---|---|
-| Frontend | React + TypeScript (Vite) |
+| Frontend | Next.js (App Router) + React + TypeScript — SSR for SEO (migrated from Vite) |
 | Backend | Node + Express + TypeScript |
 | Database | PostgreSQL |
 | ORM | Prisma |
