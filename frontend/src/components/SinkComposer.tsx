@@ -13,6 +13,7 @@ import { useAuthModal } from '../lib/authModal';
 import { apiFetch } from '../lib/api';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
+import { CategoryInfoModal } from './CategoryInfoModal';
 import type { Category } from '../types';
 
 const CONCLUSIONS = ['GHOSTED', 'REJECTED', 'ACCEPTED', 'WITHDREW', 'PENDING', 'OTHER'];
@@ -38,6 +39,7 @@ export function SinkComposer({
   const [pollOptions, setPollOptions] = useState(['', '']);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
 
   const category = categories.find((c) => c.id === categoryId);
 
@@ -111,18 +113,43 @@ export function SinkComposer({
 
   return (
     <div className="space-y-3 rounded-xl border border-line bg-surface p-4">
-      <select
-        value={categoryId}
-        onChange={(e) => setCategoryId(e.target.value)}
-        className={fieldClass}
-      >
-        <option value="">Choose a category…</option>
-        {categories.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-      </select>
+      <div className="flex gap-2">
+        <select
+          value={categoryId}
+          onChange={(e) => setCategoryId(e.target.value)}
+          className={`${fieldClass} flex-1`}
+        >
+          <option value="">Choose a category…</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={() => setShowInfo(true)}
+          aria-label="What do these categories mean?"
+          title="What do these categories mean?"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-line text-ink-3 hover:border-line-strong hover:text-ink"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+        </button>
+      </div>
 
       <Input
         placeholder="Title"
@@ -206,6 +233,13 @@ export function SinkComposer({
           {busy ? 'Posting…' : '+ New Sink'}
         </Button>
       </div>
+
+      {showInfo && (
+        <CategoryInfoModal
+          categories={categories}
+          onClose={() => setShowInfo(false)}
+        />
+      )}
     </div>
   );
 }

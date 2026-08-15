@@ -5,6 +5,7 @@ export interface Category {
   name: string;
   slug: string;
   color: string;
+  description: string | null;
   showsCompany: boolean;
   showsConclusion: boolean;
   allowsPoll: boolean;
