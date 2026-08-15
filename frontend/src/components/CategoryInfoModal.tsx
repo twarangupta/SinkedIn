@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Category guide modal — the "i" hint next to the composer's category picker.
  * Explains what each category is for. Content is data-driven (category.description

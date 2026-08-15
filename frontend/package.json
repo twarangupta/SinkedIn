@@ -2,36 +2,30 @@
   "name": "sinkedin-frontend",
   "version": "0.0.0",
   "private": true,
-  "type": "module",
-  "description": "SinkedIn frontend — Vite + React + TypeScript (presentational components + data hooks).",
+  "description": "SinkedIn frontend — Next.js (App Router) + TypeScript, SSR for SEO.",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview",
-    "lint": "eslint .",
+    "dev": "next dev -p 5173",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.112.3",
+    "next": "^14.2.18",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.18.2"
+    "@supabase/supabase-js": "^2.112.3"
   },
   "devDependencies": {
-    "@eslint/js": "^9.18.0",
-    "@tailwindcss/vite": "^4.3.3",
+    "typescript": "^5.7.3",
+    "@types/node": "^22.10.7",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
-    "@vitejs/plugin-react": "^4.3.4",
-    "eslint": "^9.18.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-react-hooks": "^5.1.0",
-    "eslint-plugin-react-refresh": "^0.4.18",
-    "prettier": "^3.4.2",
     "tailwindcss": "^4.3.3",
-    "typescript": "^5.7.3",
-    "typescript-eslint": "^8.21.0",
-    "vite": "^6.0.7"
+    "@tailwindcss/postcss": "^4.3.3",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.18",
+    "prettier": "^3.4.2"
   }
 }

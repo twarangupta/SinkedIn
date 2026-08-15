@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Sign-in modal — shown on demand (public-first). Closes on success, on the
  * backdrop click, or Escape.

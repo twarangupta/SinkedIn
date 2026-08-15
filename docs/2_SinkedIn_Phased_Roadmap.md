@@ -51,12 +51,11 @@
       /services    (business logic — the unit-tested layer)
       /lib         (prisma client, shared utils)
     /prisma        (schema.prisma, migrations)
-  /frontend
+  /frontend (Next.js App Router)
     /src
-      /components  (SinkCard, CategoryPill, etc.)
-      /hooks       (useFeed, useSink)
-      /pages       (FeedPage, SinkDetailPage)
-      /lib         (api client)
+      /app         (route segments: page.tsx = feed, s/[id]/page.tsx = single Sink — server components for SEO)
+      /components  (SinkCard, CategoryPill, VoteControl, SinkComposer, etc.)
+      /lib         (server-api.ts for server components, api.ts for client mutations w/ Supabase JWT)
   ```
 - ESLint + Prettier configured (mechanical consistency).
 - `.env.example` committed (documents what env vars exist, without real values).
@@ -88,7 +87,7 @@
 *Why here:* auth is foundational and everything user-specific depends on it. Wiring it now (before features) means features are built on real identity from the start, not retrofitted.
 
 **0.5 — Frontend skeleton**
-- Vite + React + TS app boots.
+- Next.js (App Router) + React + TS app boots.
 - Can sign in via Supabase Auth.
 - Calls the backend health check and displays the result — proving the frontend ↔ backend ↔ DB pipe works end to end.
 - Basic routing set up (empty FeedPage, etc.).

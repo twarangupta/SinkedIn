@@ -45,7 +45,7 @@ Then work through the prompts below, one at a time.
 
 ```
 Read CLAUDE.md first. Scaffold an empty project (no features yet):
-- Frontend: Vite + React + TypeScript in /frontend, with folders src/components, src/hooks, src/pages, src/lib.
+- Frontend: Next.js (App Router) + React + TypeScript in /frontend, with src/app (route segments — server components for public reads), src/components (presentational primitives), and src/lib (server-api.ts for server-component fetches, api.ts for client mutations that attach the Supabase JWT). Public read pages server-render for SEO; interactive pieces are 'use client' components.
 - Backend: Express + TypeScript in /backend, with folders src/routes (endpoint definitions + middleware wiring), src/controllers (HTTP concerns only — read request, call a service, shape response), src/services (business logic — the unit-tested layer), src/lib (prisma client + utils), and /prisma. Enforce separation of concerns: routes → controllers → services → prisma; Prisma calls only in services.
 - ESLint + Prettier configured in both.
 - A committed .env.example documenting the env vars we'll need (Postgres URL, Supabase keys) with placeholder values. A .gitignore already exists at the root (it ignores node_modules, .env, build artifacts) — extend it if needed. Do NOT ignore docs/ (the planning docs are tracked on purpose).

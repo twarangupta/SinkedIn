@@ -6,7 +6,7 @@
  * later slice, so for now they're display + auth-gate only.
  */
 
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { CategoryPill } from './CategoryPill';
 import { VoteControl } from './VoteControl';
 import type { PollOption, Sink } from '../types';
@@ -68,7 +68,7 @@ export function SinkCard({ sink }: { sink: Sink }) {
       <div className="mb-2">
         <CategoryPill name={sink.category.name} color={sink.category.color} />
       </div>
-      <Link to={`/s/${sink.id}`} className="hover:underline">
+      <Link href={`/s/${sink.id}`} className="hover:underline">
         <h3 className="mb-1 font-display text-lg font-medium">{sink.title}</h3>
       </Link>
       {sink.company && (
@@ -84,7 +84,7 @@ export function SinkCard({ sink }: { sink: Sink }) {
 
       <footer className="mt-2 flex items-center gap-4 text-sm text-ink-3">
         <VoteControl sinkId={sink.id} score={sink.score} myVote={sink.myVote} />
-        <Link to={`/s/${sink.id}`} className="hover:text-ink">
+        <Link href={`/s/${sink.id}`} className="hover:text-ink">
           {sink._count.comments} comments
         </Link>
       </footer>

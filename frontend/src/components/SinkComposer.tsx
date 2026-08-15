@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * SinkComposer — the "+ New Sink" box at the top of the feed.
  *
@@ -8,6 +10,7 @@
  */
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../lib/auth';
 import { useAuthModal } from '../lib/authModal';
 import { apiFetch } from '../lib/api';
@@ -20,13 +23,8 @@ const CONCLUSIONS = ['GHOSTED', 'REJECTED', 'ACCEPTED', 'WITHDREW', 'PENDING', '
 const fieldClass =
   'h-10 w-full rounded-lg border border-line bg-elevated px-3 text-sm text-ink outline-none focus:border-primary';
 
-export function SinkComposer({
-  categories,
-  onCreated,
-}: {
-  categories: Category[];
-  onCreated: () => void;
-}) {
+export function SinkComposer({ categories }: { categories: Category[] }) {
+  const router = useRouter();
   const { session } = useAuth();
   const { open } = useAuthModal();
   const [expanded, setExpanded] = useState(false);
@@ -42,6 +40,15 @@ export function SinkComposer({
   const [showInfo, setShowInfo] = useState(false);
 
   const category = categories.find((c) => c.id === categoryId);
+
+  // Data hygiene for the future SEO Interview-Experience hub (see
+  // docs/3_Retention_Features.md): a category-aware placeholder nudges cleanly
+  // structured input now WITHOUT building a form or changing the schema. The
+  // body stays free text — the soul is the wedge vs. soulless data dumps.
+  const bodyPlaceholder =
+    category?.slug === 'interview-experience'
+      ? 'Rounds, questions asked, difficulty, and how it ended…'
+      : 'Say more (optional)';
 
   const reset = () => {
     setExpanded(false);
@@ -89,7 +96,7 @@ export function SinkComposer({
         body: JSON.stringify(payload),
       });
       reset();
-      onCreated();
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to post');
     } finally {
@@ -158,7 +165,7 @@ export function SinkComposer({
         maxLength={200}
       />
       <textarea
-        placeholder="Say more (optional)"
+        placeholder={bodyPlaceholder}
         value={body}
         onChange={(e) => setBody(e.target.value)}
         rows={3}

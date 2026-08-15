@@ -1,4 +1,5 @@
-/* eslint-disable react-refresh/only-export-components */
+'use client';
+
 /**
  * Auth-modal context — powers the "public-first, sign-in on action" model.
  *
