@@ -13,6 +13,8 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import cors from 'cors';
 import categoriesRouter from './routes/categories.routes.js';
 import usersRouter from './routes/users.routes.js';
+import sinksRouter from './routes/sinks.routes.js';
+import { AppError } from './lib/errors.js';
 
 /**
  * Create a fully-wired Express app.
@@ -37,12 +39,17 @@ export function createApp() {
   // --- Feature routers, all under the versioned /api/v1 prefix ---
   app.use('/api/v1/categories', categoriesRouter);
   app.use('/api/v1/users', usersRouter);
-  // Future: app.use('/api/v1/sinks', sinksRouter); etc.
+  app.use('/api/v1/sinks', sinksRouter);
 
   // --- Centralized error handler (must be LAST, and must take 4 args so
   // Express recognizes it as error-handling middleware). Controllers pass
   // errors here via next(error). ---
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    // Expected errors carry a status code; everything else is a 500.
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
     // eslint-disable-next-line no-console
     console.error('Unhandled error:', error);
     res.status(500).json({ error: 'Internal Server Error' });

@@ -14,5 +14,9 @@ export default defineConfig({
     environment: 'node',
     setupFiles: ['./vitest.setup.ts'],
     include: ['src/**/*.test.ts', 'prisma/**/*.test.ts'],
+    // All test files share ONE test database, so run them serially — parallel
+    // files would stomp each other's rows (e.g. both inserting a "Poll"
+    // category → unique-constraint collision).
+    fileParallelism: false,
   },
 });
