@@ -265,7 +265,7 @@ Build a small set of primitives, compose everything else from them:
 - **`PollBlock`** — renders poll options + vote + live results (for poll/discussion/advice Sinks).
 - **`CommentThread`** — threaded comments with reply nesting.
 
-Screens (`FeedPage`, `SinkDetailPage`, `ProfilePage`) are arrangements of these primitives plus data-fetching. Keep data-fetching in hooks (`useFeed()`, `useSink(id)`) separate from the presentational components — components take data as props and render; hooks own the fetching. This split is what makes components easy for Claude Code to reason about in isolation and easy for you to test.
+**Next.js App Router split (see CLAUDE.md for the canonical rules):** public read pages are **server components** that fetch from the Express API via `src/lib/server-api.ts` and server-render, so they're SEO-indexable (real HTML + OpenGraph metadata via `generateMetadata`). Pages live in `src/app/` (`page.tsx` = feed, `s/[id]/page.tsx` = single Sink, profile route similarly). Interactive pieces (`SinkComposeForm`, `BuoyButton`/vote controls, auth modal, header) are **client components** (`'use client'`) whose mutations go through the client `src/lib/api.ts` helper (which attaches the Supabase JWT). The presentational primitives above stay pure — they take data as props and render, so the same `SinkCard` works whether the data came from a server component or a client fetch.
 
 ---
 
@@ -282,7 +282,7 @@ Screens (`FeedPage`, `SinkDetailPage`, `ProfilePage`) are arrangements of these 
 ## Build order (Phase 0 → Phase 1, step by step)
 
 **Phase 0 — foundation**
-1. **Repo scaffold** — Vite+React+TS frontend, Express+TS backend, shared `packages/` for Zod schemas if you want a monorepo (optional; two repos is fine too).
+1. **Repo scaffold** — Next.js (App Router) + React + TS frontend, Express+TS backend, shared `packages/` for Zod schemas if you want a monorepo (optional; two repos is fine too).
 2. **Prisma schema + first migration** — the tables above, against a local Postgres (Docker easiest).
 3. **Seed the `Category` table** — the 12 starter categories with their config flags.
 4. **`CLAUDE.md`** written (see below) before asking Claude Code to build features.

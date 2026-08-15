@@ -51,7 +51,7 @@ A Sink is a Reddit-style text post (title + body) with one **Category**. The cat
 ## Comments & docstrings
 Write **thorough** docstrings and inline comments in all source — they help explain the *why* and keep the code understandable. They are stripped from production builds automatically, so document freely:
 - Backend: the production `tsconfig` sets `"removeComments": true`, so compiled JS ships without comments.
-- Frontend: Vite's production build minifies and strips comments automatically.
+- Frontend: the Next.js production build minifies and strips comments automatically.
 Do **not** maintain separate branches to remove comments — source stays documented; the build strips them.
 
 ## Testing
