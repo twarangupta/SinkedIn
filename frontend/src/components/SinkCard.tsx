@@ -6,8 +6,9 @@
  * later slice, so for now they're display + auth-gate only.
  */
 
+import { Link } from 'react-router-dom';
 import { CategoryPill } from './CategoryPill';
-import { useRequireAuth } from '../lib/authModal';
+import { VoteControl } from './VoteControl';
 import type { PollOption, Sink } from '../types';
 
 function initials(handle: string): string {
@@ -52,8 +53,6 @@ function PollBlock({ options }: { options: PollOption[] }) {
 }
 
 export function SinkCard({ sink }: { sink: Sink }) {
-  const requireAuth = useRequireAuth();
-
   return (
     <article className="rounded-xl border border-line bg-surface p-5">
       <header className="mb-3 flex items-center gap-3">
@@ -69,7 +68,9 @@ export function SinkCard({ sink }: { sink: Sink }) {
       <div className="mb-2">
         <CategoryPill name={sink.category.name} color={sink.category.color} />
       </div>
-      <h3 className="mb-1 font-display text-lg font-medium">{sink.title}</h3>
+      <Link to={`/s/${sink.id}`} className="hover:underline">
+        <h3 className="mb-1 font-display text-lg font-medium">{sink.title}</h3>
+      </Link>
       {sink.company && (
         <div className="mb-2 text-xs text-ink-3">
           at {sink.company}
@@ -82,24 +83,10 @@ export function SinkCard({ sink }: { sink: Sink }) {
       {sink.pollOptions.length > 0 && <PollBlock options={sink.pollOptions} />}
 
       <footer className="mt-2 flex items-center gap-4 text-sm text-ink-3">
-        <div className="flex items-center gap-2 rounded-lg border border-line px-2 py-1">
-          <button
-            className="leading-none hover:text-buoy"
-            aria-label="Buoy (upvote)"
-            onClick={() => requireAuth(() => undefined)}
-          >
-            ▲
-          </button>
-          <span className="font-mono text-ink">{sink.score}</span>
-          <button
-            className="leading-none hover:text-anchor"
-            aria-label="Anchor (downvote)"
-            onClick={() => requireAuth(() => undefined)}
-          >
-            ▼
-          </button>
-        </div>
-        <span>{sink._count.comments} comments</span>
+        <VoteControl sinkId={sink.id} score={sink.score} myVote={sink.myVote} />
+        <Link to={`/s/${sink.id}`} className="hover:text-ink">
+          {sink._count.comments} comments
+        </Link>
       </footer>
     </article>
   );

@@ -8,6 +8,7 @@
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './lib/auth';
 import { AuthModalProvider } from './lib/authModal';
@@ -21,10 +22,12 @@ createRoot(rootElement).render(
   // surface accidental side effects and unsafe patterns early. It renders
   // nothing itself and is stripped from the production build.
   <StrictMode>
-    <AuthProvider>
-      <AuthModalProvider>
-        <App />
-      </AuthModalProvider>
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <AuthModalProvider>
+          <App />
+        </AuthModalProvider>
+      </AuthProvider>
+    </BrowserRouter>
   </StrictMode>,
 );

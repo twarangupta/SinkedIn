@@ -14,6 +14,7 @@ import cors from 'cors';
 import categoriesRouter from './routes/categories.routes.js';
 import usersRouter from './routes/users.routes.js';
 import sinksRouter from './routes/sinks.routes.js';
+import sitemapRouter from './routes/sitemap.routes.js';
 import { AppError } from './lib/errors.js';
 
 /**
@@ -40,6 +41,7 @@ export function createApp() {
   app.use('/api/v1/categories', categoriesRouter);
   app.use('/api/v1/users', usersRouter);
   app.use('/api/v1/sinks', sinksRouter);
+  app.use(sitemapRouter);
 
   // --- Centralized error handler (must be LAST, and must take 4 args so
   // Express recognizes it as error-handling middleware). Controllers pass

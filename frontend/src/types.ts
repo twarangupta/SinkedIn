@@ -37,4 +37,6 @@ export interface Sink {
   user: PublicUser;
   pollOptions: PollOption[];
   _count: { comments: number; votes: number };
+  /** The current user's vote on this Sink (null if not voted / anonymous). */
+  myVote: 'BUOY' | 'ANCHOR' | null;
 }

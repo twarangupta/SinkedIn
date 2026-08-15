@@ -1,25 +1,24 @@
 /**
  * Sink routes — endpoint definitions + middleware wiring only.
  *
- * Mounted at /api/v1/sinks. Note the public/protected split (public-first
- * product model): reading the feed is public; creating a Sink requires auth.
+ * Mounted at /api/v1/sinks. Public-first: reads use optionalAuth (public, but
+ * they get "your vote" when signed in); writes/votes require auth.
  */
 
 import { Router } from 'express';
 import { z } from 'zod';
-import { Conclusion } from '@prisma/client';
+import { Conclusion, VoteValue } from '@prisma/client';
 import { requireAuth } from '../middleware/auth.js';
+import { optionalAuth } from '../middleware/optionalAuth.js';
 import { validateBody } from '../middleware/validate.js';
 import {
   createSinkHandler,
+  getSinkHandler,
   listSinksHandler,
+  unvoteHandler,
+  voteHandler,
 } from '../controllers/sinks.controller.js';
 
-/**
- * Shape validation for creating a Sink. Category-conditional rules (requiresPoll,
- * conclusion=OTHER, etc.) are enforced in the service, since they depend on the
- * chosen category's config. Here we only validate the flat shape/limits.
- */
 const createSinkSchema = z.object({
   categoryId: z.string().uuid(),
   title: z.string().min(1).max(200),
@@ -30,12 +29,17 @@ const createSinkSchema = z.object({
   pollOptions: z.array(z.string().min(1).max(100)).min(2).max(6).optional(),
 });
 
+const voteSchema = z.object({ value: z.nativeEnum(VoteValue) });
+
 const router = Router();
 
-// GET /api/v1/sinks — public feed (optionally ?category=slug).
-router.get('/', listSinksHandler);
+// Reads (public; optionalAuth adds the caller's own vote when signed in).
+router.get('/', optionalAuth, listSinksHandler);
+router.get('/:id', optionalAuth, getSinkHandler);
 
-// POST /api/v1/sinks — create a Sink (auth + validation).
+// Writes / votes (auth required).
 router.post('/', requireAuth, validateBody(createSinkSchema), createSinkHandler);
+router.post('/:id/vote', requireAuth, validateBody(voteSchema), voteHandler);
+router.delete('/:id/vote', requireAuth, unvoteHandler);
 
 export default router;

@@ -3,9 +3,6 @@
  * composer and vote controls prompt sign-in when logged out.
  */
 
-import { useEffect, useState } from 'react';
-import { useAuth } from '../lib/auth';
-import { apiFetch } from '../lib/api';
 import { useCategories } from '../hooks/useCategories';
 import { useFeed } from '../hooks/useFeed';
 import { Header } from '../components/layout/Header';
@@ -15,24 +12,12 @@ import { SinkComposer } from '../components/SinkComposer';
 import { SinkCard } from '../components/SinkCard';
 
 export function HomePage() {
-  const { session } = useAuth();
   const categories = useCategories();
   const { sinks, loading, refresh } = useFeed();
-  const [handle, setHandle] = useState<string>();
-
-  useEffect(() => {
-    if (!session) {
-      setHandle(undefined);
-      return;
-    }
-    apiFetch<{ user: { handle: string } }>('/api/v1/users/me')
-      .then((res) => setHandle(res.user.handle))
-      .catch(() => undefined);
-  }, [session]);
 
   return (
     <div className="min-h-screen">
-      <Header handle={handle} />
+      <Header />
       <div className="mx-auto flex max-w-6xl gap-6 px-6 py-6">
         <Sidebar />
 

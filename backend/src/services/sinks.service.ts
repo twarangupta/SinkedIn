@@ -11,7 +11,7 @@
  * their handle.
  */
 
-import { Prisma, type Conclusion } from '@prisma/client';
+import { Prisma, type Conclusion, type VoteValue } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../lib/errors.js';
 
@@ -104,15 +104,38 @@ export async function createSink(userId: string, input: CreateSinkInput) {
   });
 }
 
+type SinkRow = Prisma.SinkGetPayload<{ select: typeof sinkPublicSelect }>;
+
+/**
+ * Attach the current user's vote (BUOY / ANCHOR / null) to each Sink, so the UI
+ * can highlight the button they picked. Anonymous callers get null everywhere.
+ */
+async function attachMyVote(
+  sinks: SinkRow[],
+  userId?: string,
+): Promise<(SinkRow & { myVote: VoteValue | null })[]> {
+  if (!userId || sinks.length === 0) {
+    return sinks.map((s) => ({ ...s, myVote: null }));
+  }
+  const votes = await prisma.vote.findMany({
+    where: { userId, sinkId: { in: sinks.map((s) => s.id) } },
+    select: { sinkId: true, value: true },
+  });
+  const byId = new Map(votes.map((v) => [v.sinkId, v.value]));
+  return sinks.map((s) => ({ ...s, myVote: byId.get(s.id) ?? null }));
+}
+
 /**
  * The feed: most recent non-deleted Sinks, optionally filtered by category slug.
+ * If userId is passed, each Sink includes the caller's own vote.
  */
 export async function getFeed(options: {
   categorySlug?: string;
   limit?: number;
+  userId?: string;
 }) {
-  const { categorySlug, limit = 20 } = options;
-  return prisma.sink.findMany({
+  const { categorySlug, limit = 20, userId } = options;
+  const sinks = await prisma.sink.findMany({
     where: {
       deletedAt: null,
       ...(categorySlug ? { category: { slug: categorySlug } } : {}),
@@ -120,5 +143,26 @@ export async function getFeed(options: {
     select: sinkPublicSelect,
     orderBy: { createdAt: 'desc' },
     take: limit,
+  });
+  return attachMyVote(sinks, userId);
+}
+
+/** A single Sink by id (for the detail page / per-Sink URL). */
+export async function getSinkById(id: string, userId?: string) {
+  const sink = await prisma.sink.findFirst({
+    where: { id, deletedAt: null },
+    select: sinkPublicSelect,
+  });
+  if (!sink) throw new AppError('Sink not found', 404);
+  const [withVote] = await attachMyVote([sink], userId);
+  return withVote;
+}
+
+/** All non-deleted Sink ids + timestamps, for building the sitemap. */
+export async function getSinkSitemapEntries() {
+  return prisma.sink.findMany({
+    where: { deletedAt: null },
+    select: { id: true, createdAt: true },
+    orderBy: { createdAt: 'desc' },
   });
 }
