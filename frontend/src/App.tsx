@@ -7,7 +7,8 @@
  *   /s/:id  → single Sink (shareable, SEO-friendly URL)
  */
 
-import { Routes, Route } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import { useAuth } from './lib/auth';
 import { HomePage } from './pages/HomePage';
 import { SinkDetailPage } from './pages/SinkDetailPage';
@@ -15,6 +16,15 @@ import { AuthModal } from './components/AuthModal';
 
 function App() {
   const { loading } = useAuth();
+  const location = useLocation();
+
+  // Report an SPA page view to GA4 on every route change (the base tag only
+  // fires on the first load).
+  useEffect(() => {
+    window.gtag?.('event', 'page_view', {
+      page_path: location.pathname + location.search,
+    });
+  }, [location.pathname, location.search]);
 
   if (loading) {
     return (
