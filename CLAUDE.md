@@ -46,6 +46,8 @@ A Sink is a Reddit-style text post (title + body) with one **Category**. The cat
 - Comments are threaded via optional `parentId`.
 - **Identity:** persistent pseudonymous `handle`, created on signup — user picks from 3–4 auto-generated suggestions (adjective + noun + number) or types their own, with a live uniqueness check, a blocklist (company/role words, admin/mod/official, basic profanity), and an anonymity nudge. Store `supabaseUserId` (unique) on the User row.
 - **Privacy (hard rule):** public API responses never include `email`, `supabaseUserId`, or any real-identity field — only `handle`. Enforce by `select`-ing only safe fields in Prisma queries that serve public data; never strip after the fact.
+- **Public-first:** the app renders for everyone; public reads (`GET /sinks`, `/categories`, `/sinks/:id`, comments) need no auth — the backend uses `optionalAuth` where per-user data (e.g. `myVote`) is enriched. Sign-in is required only for actions (post, vote, comment), surfaced as a modal on the action, not a login wall. Writes use `requireAuth`.
+- **Reputation is branded "Auras"** (Reddit-style karma) — deferred, derivable from buoys; always call it "Auras", never karma/points.
 - No AI features in this phase — do not add AI calls unless explicitly asked.
 
 ## Comments & docstrings
