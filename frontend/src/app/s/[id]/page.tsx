@@ -9,9 +9,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getSinkServer } from '@/lib/server-api';
+import { getCommentsServer, getSinkServer } from '@/lib/server-api';
 import { Header } from '@/components/layout/Header';
 import { SinkCard } from '@/components/SinkCard';
+import { CommentSection } from '@/components/CommentSection';
 
 export async function generateMetadata({
   params,
@@ -37,6 +38,7 @@ export default async function SinkPage({
 }) {
   const sink = await getSinkServer(params.id);
   if (!sink) notFound();
+  const comments = await getCommentsServer(sink.id);
 
   return (
     <div className="min-h-screen">
@@ -46,7 +48,7 @@ export default async function SinkPage({
           ← Back to feed
         </Link>
         <SinkCard sink={sink} />
-        <p className="px-1 text-sm text-ink-3">Comments are coming soon.</p>
+        <CommentSection sinkId={sink.id} comments={comments} />
       </div>
     </div>
   );

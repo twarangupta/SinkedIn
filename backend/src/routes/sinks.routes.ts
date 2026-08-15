@@ -18,6 +18,10 @@ import {
   unvoteHandler,
   voteHandler,
 } from '../controllers/sinks.controller.js';
+import {
+  createCommentHandler,
+  listCommentsHandler,
+} from '../controllers/comments.controller.js';
 
 const createSinkSchema = z.object({
   categoryId: z.string().uuid(),
@@ -31,15 +35,27 @@ const createSinkSchema = z.object({
 
 const voteSchema = z.object({ value: z.nativeEnum(VoteValue) });
 
+const createCommentSchema = z.object({
+  body: z.string().min(1).max(5000),
+  parentId: z.string().uuid().optional(),
+});
+
 const router = Router();
 
 // Reads (public; optionalAuth adds the caller's own vote when signed in).
 router.get('/', optionalAuth, listSinksHandler);
 router.get('/:id', optionalAuth, getSinkHandler);
+router.get('/:id/comments', listCommentsHandler);
 
-// Writes / votes (auth required).
+// Writes / votes / comments (auth required).
 router.post('/', requireAuth, validateBody(createSinkSchema), createSinkHandler);
 router.post('/:id/vote', requireAuth, validateBody(voteSchema), voteHandler);
 router.delete('/:id/vote', requireAuth, unvoteHandler);
+router.post(
+  '/:id/comments',
+  requireAuth,
+  validateBody(createCommentSchema),
+  createCommentHandler,
+);
 
 export default router;

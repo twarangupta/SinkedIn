@@ -7,7 +7,7 @@
  * on every request (the content changes constantly).
  */
 
-import type { Category, Sink } from '../types';
+import type { Category, Comment, Sink } from '../types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
@@ -37,4 +37,11 @@ export async function getSinkServer(id: string): Promise<Sink | null> {
   } catch {
     return null;
   }
+}
+
+export async function getCommentsServer(sinkId: string): Promise<Comment[]> {
+  const { comments } = await getJson<{ comments: Comment[] }>(
+    `/api/v1/sinks/${sinkId}/comments`,
+  );
+  return comments;
 }

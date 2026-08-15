@@ -17,6 +17,14 @@ export interface PublicUser {
   handle: string;
 }
 
+export interface Comment {
+  id: string;
+  body: string;
+  parentId: string | null;
+  createdAt: string;
+  user: PublicUser;
+}
+
 export interface PollOption {
   id: string;
   label: string;
