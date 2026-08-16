@@ -9,7 +9,8 @@
 import Link from 'next/link';
 import { CategoryPill } from './CategoryPill';
 import { VoteControl } from './VoteControl';
-import type { PollOption, Sink } from '../types';
+import { PollBlock } from './PollBlock';
+import type { Sink } from '../types';
 
 function initials(handle: string): string {
   return handle.replace(/[^A-Za-z]/g, '').slice(0, 2).toUpperCase() || '::';
@@ -25,42 +26,23 @@ function timeAgo(iso: string): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-function PollBlock({ options }: { options: PollOption[] }) {
-  const total = options.reduce((sum, o) => sum + o._count.votes, 0);
-  return (
-    <div className="mb-3 space-y-2">
-      {options.map((option) => {
-        const pct = total ? Math.round((option._count.votes / total) * 100) : 0;
-        return (
-          <div
-            key={option.id}
-            className="relative overflow-hidden rounded-lg border border-line bg-elevated"
-          >
-            <div
-              className="absolute inset-y-0 left-0 bg-primary/25"
-              style={{ width: `${pct}%` }}
-            />
-            <div className="relative flex justify-between px-3 py-2 text-sm">
-              <span>{option.label}</span>
-              <span className="font-mono text-ink-3">{pct}%</span>
-            </div>
-          </div>
-        );
-      })}
-      <div className="text-xs text-ink-3">{total} votes</div>
-    </div>
-  );
-}
-
 export function SinkCard({ sink }: { sink: Sink }) {
   return (
     <article className="rounded-xl border border-line bg-surface p-5">
       <header className="mb-3 flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-elevated text-xs text-ink-2">
+        <Link
+          href={`/u/${sink.user.handle}`}
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-elevated text-xs text-ink-2 hover:ring-2 hover:ring-line-strong"
+        >
           {initials(sink.user.handle)}
-        </div>
+        </Link>
         <div className="min-w-0">
-          <div className="truncate text-sm font-medium">{sink.user.handle}</div>
+          <Link
+            href={`/u/${sink.user.handle}`}
+            className="block truncate text-sm font-medium hover:underline"
+          >
+            {sink.user.handle}
+          </Link>
           <div className="text-xs text-ink-3">{timeAgo(sink.createdAt)}</div>
         </div>
       </header>
@@ -80,7 +62,13 @@ export function SinkCard({ sink }: { sink: Sink }) {
       {sink.body && (
         <p className="mb-3 whitespace-pre-wrap text-sm text-ink-2">{sink.body}</p>
       )}
-      {sink.pollOptions.length > 0 && <PollBlock options={sink.pollOptions} />}
+      {sink.pollOptions.length > 0 && (
+        <PollBlock
+          sinkId={sink.id}
+          options={sink.pollOptions}
+          myPollVote={sink.myPollVote}
+        />
+      )}
 
       <footer className="mt-2 flex items-center gap-4 text-sm text-ink-3">
         <VoteControl sinkId={sink.id} score={sink.score} myVote={sink.myVote} />

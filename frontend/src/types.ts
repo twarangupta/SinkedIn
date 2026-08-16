@@ -17,6 +17,13 @@ export interface PublicUser {
   handle: string;
 }
 
+/** A public profile (handle + join date) from GET /users/:handle. */
+export interface UserProfile {
+  id: string;
+  handle: string;
+  createdAt: string;
+}
+
 export interface Comment {
   id: string;
   body: string;
@@ -47,4 +54,6 @@ export interface Sink {
   _count: { comments: number; votes: number };
   /** The current user's vote on this Sink (null if not voted / anonymous). */
   myVote: 'BUOY' | 'ANCHOR' | null;
+  /** The poll option id the current user chose (null if none / anonymous). */
+  myPollVote: string | null;
 }

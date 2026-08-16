@@ -7,7 +7,7 @@
  * on every request (the content changes constantly).
  */
 
-import type { Category, Comment, Sink } from '../types';
+import type { Category, Comment, Sink, UserProfile } from '../types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
@@ -44,4 +44,26 @@ export async function getCommentsServer(sinkId: string): Promise<Comment[]> {
     `/api/v1/sinks/${sinkId}/comments`,
   );
   return comments;
+}
+
+/** A public profile by handle (for /u/:handle). Null if the user doesn't exist. */
+export async function getUserProfileServer(
+  handle: string,
+): Promise<UserProfile | null> {
+  try {
+    const { user } = await getJson<{ user: UserProfile }>(
+      `/api/v1/users/${encodeURIComponent(handle)}`,
+    );
+    return user;
+  } catch {
+    return null;
+  }
+}
+
+/** A user's own Sinks (post history), newest first — reuses the feed's author filter. */
+export async function getUserSinksServer(handle: string): Promise<Sink[]> {
+  const { sinks } = await getJson<{ sinks: Sink[] }>(
+    `/api/v1/sinks?author=${encodeURIComponent(handle)}`,
+  );
+  return sinks;
 }

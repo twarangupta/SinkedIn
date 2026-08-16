@@ -5,13 +5,16 @@
 
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '../lib/prisma.js';
-import { castVote, removeVote } from './votes.service.js';
+import { castVote, getMyVoteState, removeVote } from './votes.service.js';
 
 let userA: string;
 let userB: string;
 let sinkId: string;
 
 async function clear() {
+  // Children before parents (FK-safe): poll votes/options depend on sinks.
+  await prisma.pollVote.deleteMany();
+  await prisma.pollOption.deleteMany();
   await prisma.vote.deleteMany();
   await prisma.sink.deleteMany();
   await prisma.user.deleteMany();
@@ -73,5 +76,36 @@ describe('castVote / removeVote', () => {
     await expect(
       castVote(userA, '00000000-0000-0000-0000-000000000000', 'BUOY'),
     ).rejects.toThrow(/not found/);
+  });
+});
+
+describe('getMyVoteState', () => {
+  it('returns the user’s own buoy/anchor votes (and nothing for others)', async () => {
+    await castVote(userA, sinkId, 'BUOY');
+
+    const mine = await getMyVoteState(userA);
+    expect(mine.votes).toEqual([{ sinkId, value: 'BUOY' }]);
+    expect(mine.pollVotes).toEqual([]);
+
+    const theirs = await getMyVoteState(userB);
+    expect(theirs.votes).toEqual([]);
+  });
+
+  it('maps poll votes back to their Sink id', async () => {
+    // A poll Sink with one option, voted by userA.
+    const poll = await prisma.sink.create({
+      data: {
+        userId: userA,
+        categoryId: (await prisma.category.findFirstOrThrow()).id,
+        title: 'poll',
+        pollOptions: { create: [{ label: 'a', position: 0 }] },
+      },
+      select: { id: true, pollOptions: { select: { id: true } } },
+    });
+    const optionId = poll.pollOptions[0].id;
+    await prisma.pollVote.create({ data: { userId: userA, pollOptionId: optionId } });
+
+    const mine = await getMyVoteState(userA);
+    expect(mine.pollVotes).toEqual([{ sinkId: poll.id, pollOptionId: optionId }]);
   });
 });

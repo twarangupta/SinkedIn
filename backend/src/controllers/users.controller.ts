@@ -4,6 +4,7 @@
 
 import type { NextFunction, Request, Response } from 'express';
 import { getUserByHandle } from '../services/users.service.js';
+import { getMyVoteState } from '../services/votes.service.js';
 
 /**
  * GET /api/v1/users/me → { user } for the authenticated caller.
@@ -16,6 +17,28 @@ export function getMe(req: Request, res: Response): void {
     return;
   }
   res.json({ user: req.user });
+}
+
+/**
+ * GET /api/v1/users/me/votes → { votes, pollVotes } for the authenticated
+ * caller — used by the client to hydrate its own vote highlights (see
+ * getMyVoteState). Auth required.
+ */
+export async function getMyVotes(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+    const state = await getMyVoteState(req.user.id);
+    res.json(state);
+  } catch (err) {
+    next(err);
+  }
 }
 
 /**

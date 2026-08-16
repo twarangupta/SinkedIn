@@ -54,6 +54,39 @@ export async function castVote(
   });
 }
 
+/**
+ * All of a user's own vote state, for client-side hydration.
+ *
+ * The public feed/profile/Sink pages are SSR'd WITHOUT auth (for SEO), so they
+ * can't include the caller's own votes — every card arrives as "not voted".
+ * The client calls this once after sign-in to learn which Sinks it has voted on
+ * (Buoy/Anchor) and which poll option it picked, and highlights them. Scores
+ * are unaffected (they're global and already correct from SSR); this only
+ * restores the caller's own highlights.
+ */
+export async function getMyVoteState(userId: string): Promise<{
+  votes: { sinkId: string; value: VoteValue }[];
+  pollVotes: { sinkId: string; pollOptionId: string }[];
+}> {
+  const [votes, pollVotes] = await Promise.all([
+    prisma.vote.findMany({
+      where: { userId },
+      select: { sinkId: true, value: true },
+    }),
+    prisma.pollVote.findMany({
+      where: { userId },
+      select: { pollOptionId: true, option: { select: { sinkId: true } } },
+    }),
+  ]);
+  return {
+    votes,
+    pollVotes: pollVotes.map((pv) => ({
+      sinkId: pv.option.sinkId,
+      pollOptionId: pv.pollOptionId,
+    })),
+  };
+}
+
 /** Remove the user's vote (used to un-buoy / un-anchor). */
 export async function removeVote(
   userId: string,

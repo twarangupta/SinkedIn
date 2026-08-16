@@ -106,23 +106,55 @@ export async function createSink(userId: string, input: CreateSinkInput) {
 
 type SinkRow = Prisma.SinkGetPayload<{ select: typeof sinkPublicSelect }>;
 
+type SinkWithMyState = SinkRow & {
+  myVote: VoteValue | null;
+  myPollVote: string | null;
+};
+
 /**
- * Attach the current user's vote (BUOY / ANCHOR / null) to each Sink, so the UI
- * can highlight the button they picked. Anonymous callers get null everywhere.
+ * Attach the current user's per-Sink state so the UI can highlight what they
+ * picked: their Buoy/Anchor vote (`myVote`) and their poll choice
+ * (`myPollVote` = the chosen PollOption id, or null). Anonymous callers get
+ * null everywhere. One query each, batched across all the Sinks passed in.
  */
-async function attachMyVote(
+async function attachMyState(
   sinks: SinkRow[],
   userId?: string,
-): Promise<(SinkRow & { myVote: VoteValue | null })[]> {
+): Promise<SinkWithMyState[]> {
   if (!userId || sinks.length === 0) {
-    return sinks.map((s) => ({ ...s, myVote: null }));
+    return sinks.map((s) => ({ ...s, myVote: null, myPollVote: null }));
   }
+
+  // Buoy/Anchor votes, keyed by sink id.
   const votes = await prisma.vote.findMany({
     where: { userId, sinkId: { in: sinks.map((s) => s.id) } },
     select: { sinkId: true, value: true },
   });
-  const byId = new Map(votes.map((v) => [v.sinkId, v.value]));
-  return sinks.map((s) => ({ ...s, myVote: byId.get(s.id) ?? null }));
+  const voteBySink = new Map(votes.map((v) => [v.sinkId, v.value]));
+
+  // Poll votes: map each poll option id back to its sink, then look up the
+  // user's votes across all those options in one query.
+  const optionToSink = new Map<string, string>();
+  for (const s of sinks) {
+    for (const option of s.pollOptions) optionToSink.set(option.id, s.id);
+  }
+  const pollVoteBySink = new Map<string, string>();
+  if (optionToSink.size > 0) {
+    const pollVotes = await prisma.pollVote.findMany({
+      where: { userId, pollOptionId: { in: [...optionToSink.keys()] } },
+      select: { pollOptionId: true },
+    });
+    for (const pv of pollVotes) {
+      const sinkId = optionToSink.get(pv.pollOptionId);
+      if (sinkId) pollVoteBySink.set(sinkId, pv.pollOptionId);
+    }
+  }
+
+  return sinks.map((s) => ({
+    ...s,
+    myVote: voteBySink.get(s.id) ?? null,
+    myPollVote: pollVoteBySink.get(s.id) ?? null,
+  }));
 }
 
 /**
@@ -131,20 +163,23 @@ async function attachMyVote(
  */
 export async function getFeed(options: {
   categorySlug?: string;
+  authorHandle?: string;
   limit?: number;
   userId?: string;
 }) {
-  const { categorySlug, limit = 20, userId } = options;
+  const { categorySlug, authorHandle, limit = 20, userId } = options;
   const sinks = await prisma.sink.findMany({
     where: {
       deletedAt: null,
       ...(categorySlug ? { category: { slug: categorySlug } } : {}),
+      // Filter to one author's posts (used by the profile page's post history).
+      ...(authorHandle ? { user: { handle: authorHandle } } : {}),
     },
     select: sinkPublicSelect,
     orderBy: { createdAt: 'desc' },
     take: limit,
   });
-  return attachMyVote(sinks, userId);
+  return attachMyState(sinks, userId);
 }
 
 /** A single Sink by id (for the detail page / per-Sink URL). */
@@ -154,8 +189,8 @@ export async function getSinkById(id: string, userId?: string) {
     select: sinkPublicSelect,
   });
   if (!sink) throw new AppError('Sink not found', 404);
-  const [withVote] = await attachMyVote([sink], userId);
-  return withVote;
+  const [withState] = await attachMyState([sink], userId);
+  return withState;
 }
 
 /** All non-deleted Sink ids + timestamps, for building the sitemap. */
