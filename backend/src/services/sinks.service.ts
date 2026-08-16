@@ -164,11 +164,18 @@ async function attachMyState(
 export async function getFeed(options: {
   categorySlug?: string;
   authorHandle?: string;
+  /** Id of the last Sink from the previous page; omit for the first page. */
+  cursor?: string;
   limit?: number;
   userId?: string;
 }) {
-  const { categorySlug, authorHandle, limit = 20, userId } = options;
-  const sinks = await prisma.sink.findMany({
+  const { categorySlug, authorHandle, cursor, limit = 10, userId } = options;
+
+  // Fetch one extra row: if it comes back, there's another page, and the last
+  // row of THIS page becomes the cursor for the next request. Cursor pagination
+  // (keyed on the unique id) is stable when new Sinks are posted mid-scroll —
+  // unlike offset, it never skips or duplicates.
+  const rows = await prisma.sink.findMany({
     where: {
       deletedAt: null,
       ...(categorySlug ? { category: { slug: categorySlug } } : {}),
@@ -177,9 +184,15 @@ export async function getFeed(options: {
     },
     select: sinkPublicSelect,
     orderBy: { createdAt: 'desc' },
-    take: limit,
+    take: limit + 1,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
   });
-  return attachMyState(sinks, userId);
+
+  const hasMore = rows.length > limit;
+  const page = hasMore ? rows.slice(0, limit) : rows;
+  const sinks = await attachMyState(page, userId);
+  const nextCursor = hasMore ? page[page.length - 1].id : null;
+  return { sinks, nextCursor };
 }
 
 /** A single Sink by id (for the detail page / per-Sink URL). */

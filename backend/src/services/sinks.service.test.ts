@@ -145,10 +145,12 @@ describe('getFeed', () => {
     await createSink(userId, { categoryId: discussionId, title: 'first' });
     await createSink(userId, { categoryId: interviewId, title: 'second' });
 
-    const all = await getFeed({});
+    const { sinks: all } = await getFeed({});
     expect(all.map((s) => s.title)).toEqual(['second', 'first']);
 
-    const onlyInterview = await getFeed({ categorySlug: 'interview-experience' });
+    const { sinks: onlyInterview } = await getFeed({
+      categorySlug: 'interview-experience',
+    });
     expect(onlyInterview.map((s) => s.title)).toEqual(['second']);
   });
 
@@ -160,10 +162,26 @@ describe('getFeed', () => {
     await createSink(other.id, { categoryId: discussionId, title: 'theirs' });
     await createSink(userId, { categoryId: discussionId, title: 'mine-2' });
 
-    const mine = await getFeed({ authorHandle: 'Test_User_001' });
+    const { sinks: mine } = await getFeed({ authorHandle: 'Test_User_001' });
     expect(mine.map((s) => s.title)).toEqual(['mine-2', 'mine-1']);
 
-    const theirs = await getFeed({ authorHandle: 'Other_User_002' });
+    const { sinks: theirs } = await getFeed({ authorHandle: 'Other_User_002' });
     expect(theirs.map((s) => s.title)).toEqual(['theirs']);
+  });
+
+  it('paginates with a cursor and stops when there are no more', async () => {
+    await createSink(userId, { categoryId: discussionId, title: 'p1' });
+    await createSink(userId, { categoryId: discussionId, title: 'p2' });
+    await createSink(userId, { categoryId: discussionId, title: 'p3' });
+
+    // Page 1 (size 2): newest two, plus a cursor pointing past them.
+    const page1 = await getFeed({ limit: 2 });
+    expect(page1.sinks.map((s) => s.title)).toEqual(['p3', 'p2']);
+    expect(page1.nextCursor).toBe(page1.sinks[1].id);
+
+    // Page 2: the remaining one, no further cursor.
+    const page2 = await getFeed({ limit: 2, cursor: page1.nextCursor! });
+    expect(page2.sinks.map((s) => s.title)).toEqual(['p1']);
+    expect(page2.nextCursor).toBeNull();
   });
 });
