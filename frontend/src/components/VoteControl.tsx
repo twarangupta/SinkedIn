@@ -6,11 +6,13 @@
  * Logged-out users get the sign-in modal. Clicking the vote you already have
  * removes it (toggle).
  *
- * TRUE optimistic update: the score + highlight change the INSTANT you click,
- * before the network call. The API runs in the background; when it returns we
- * reconcile to the server's authoritative score, and if it fails we revert.
- * This is what makes voting feel instant even though the round-trip to the
- * backend (and its DB in Mumbai) takes a beat.
+ * Responsiveness without lying about the count: on click we optimistically
+ * flip the ARROW highlight (always safe — it just reflects the button you
+ * pressed), but the NUMBER is only ever set from the server's authoritative
+ * response. We can't optimistically compute the number because the public feed
+ * is server-rendered WITHOUT auth (for SEO), so `myVote` arrives as null even
+ * for Sinks you've already voted on — trusting it to compute a delta would
+ * double-count (1 → 2 → 1). Server-truth for the number avoids that entirely.
  */
 
 import { useState } from 'react';
@@ -46,22 +48,14 @@ export function VoteControl({
     const removing = current === value;
     const nextVote: Vote = removing ? null : value;
 
-    // Compute the score delta THIS click causes, so we can apply it instantly.
-    // A vote contributes +1 (BUOY) or -1 (ANCHOR) to the score; switching sides
-    // therefore moves the score by 2.
-    const weight = (v: Vote) => (v === 'BUOY' ? 1 : v === 'ANCHOR' ? -1 : 0);
-    const delta = weight(nextVote) - weight(current);
-
-    // Snapshot for revert-on-error.
+    // Snapshot the highlight for revert-on-error.
     const prevVote = current;
-    const prevCount = count;
 
-    // 1) Optimistic: update the UI immediately, before any network call.
+    // Optimistically flip ONLY the arrow highlight (safe — it just reflects the
+    // button pressed). The number is left untouched until the server answers.
     setCurrent(nextVote);
-    setCount((c) => c + delta);
     setBusy(true);
 
-    // 2) Fire the request in the background; reconcile or revert when it returns.
     try {
       const result = removing
         ? await apiFetch<{ score: number; myVote: Vote }>(
@@ -72,13 +66,11 @@ export function VoteControl({
             `/api/v1/sinks/${sinkId}/vote`,
             { method: 'POST', body: JSON.stringify({ value }) },
           );
-      // Reconcile with the server's authoritative values (also picks up other
-      // users' votes since the page loaded).
+      // Authoritative values from the server — the only source for the number.
       setCount(result.score);
       setCurrent(result.myVote);
     } catch {
-      // Revert the optimistic change if the request failed.
-      setCount(prevCount);
+      // Revert the optimistic highlight if the request failed.
       setCurrent(prevVote);
     } finally {
       setBusy(false);
