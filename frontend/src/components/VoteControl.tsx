@@ -15,9 +15,10 @@
  * double-count (1 → 2 → 1). Server-truth for the number avoids that entirely.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { useAuthModal } from '../lib/authModal';
+import { useMyVotes } from '../lib/myVotes';
 import { apiFetch } from '../lib/api';
 
 type Vote = 'BUOY' | 'ANCHOR' | null;
@@ -33,9 +34,18 @@ export function VoteControl({
 }) {
   const { session } = useAuth();
   const { open } = useAuthModal();
+  const myVotes = useMyVotes();
   const [current, setCurrent] = useState<Vote>(myVote);
   const [count, setCount] = useState(score);
   const [busy, setBusy] = useState(false);
+
+  // Restore the caller's own highlight once their votes load (SSR sent null).
+  // Runs only when the map loads/changes — not after a click — so it never
+  // clobbers an in-progress vote. The count is untouched (already correct).
+  useEffect(() => {
+    if (!myVotes.loaded) return;
+    setCurrent(myVotes.voteBySink.get(sinkId) ?? null);
+  }, [myVotes.loaded, myVotes.voteBySink, sinkId]);
 
   const vote = async (value: 'BUOY' | 'ANCHOR') => {
     if (!session) {

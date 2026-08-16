@@ -14,9 +14,10 @@
  * the source of truth for the numbers.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { useAuthModal } from '../lib/authModal';
+import { useMyVotes } from '../lib/myVotes';
 import { apiFetch } from '../lib/api';
 import type { PollOption } from '../types';
 
@@ -31,9 +32,17 @@ export function PollBlock({
 }) {
   const { session } = useAuth();
   const { open } = useAuthModal();
+  const myVotes = useMyVotes();
   const [opts, setOpts] = useState(options);
   const [current, setCurrent] = useState<string | null>(myPollVote);
   const [busy, setBusy] = useState(false);
+
+  // Restore the caller's poll choice once their votes load (SSR sent null).
+  // Only the highlight is hydrated; the counts are global and already correct.
+  useEffect(() => {
+    if (!myVotes.loaded) return;
+    setCurrent(myVotes.pollVoteBySink.get(sinkId) ?? null);
+  }, [myVotes.loaded, myVotes.pollVoteBySink, sinkId]);
 
   const total = opts.reduce((sum, o) => sum + o._count.votes, 0);
 
