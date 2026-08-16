@@ -151,4 +151,19 @@ describe('getFeed', () => {
     const onlyInterview = await getFeed({ categorySlug: 'interview-experience' });
     expect(onlyInterview.map((s) => s.title)).toEqual(['second']);
   });
+
+  it('filters by author handle (for the profile page)', async () => {
+    const other = await prisma.user.create({
+      data: { supabaseUserId: 'seed:other', handle: 'Other_User_002' },
+    });
+    await createSink(userId, { categoryId: discussionId, title: 'mine-1' });
+    await createSink(other.id, { categoryId: discussionId, title: 'theirs' });
+    await createSink(userId, { categoryId: discussionId, title: 'mine-2' });
+
+    const mine = await getFeed({ authorHandle: 'Test_User_001' });
+    expect(mine.map((s) => s.title)).toEqual(['mine-2', 'mine-1']);
+
+    const theirs = await getFeed({ authorHandle: 'Other_User_002' });
+    expect(theirs.map((s) => s.title)).toEqual(['theirs']);
+  });
 });

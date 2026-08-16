@@ -163,14 +163,17 @@ async function attachMyState(
  */
 export async function getFeed(options: {
   categorySlug?: string;
+  authorHandle?: string;
   limit?: number;
   userId?: string;
 }) {
-  const { categorySlug, limit = 20, userId } = options;
+  const { categorySlug, authorHandle, limit = 20, userId } = options;
   const sinks = await prisma.sink.findMany({
     where: {
       deletedAt: null,
       ...(categorySlug ? { category: { slug: categorySlug } } : {}),
+      // Filter to one author's posts (used by the profile page's post history).
+      ...(authorHandle ? { user: { handle: authorHandle } } : {}),
     },
     select: sinkPublicSelect,
     orderBy: { createdAt: 'desc' },

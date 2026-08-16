@@ -30,11 +30,19 @@ export function SinkCard({ sink }: { sink: Sink }) {
   return (
     <article className="rounded-xl border border-line bg-surface p-5">
       <header className="mb-3 flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-elevated text-xs text-ink-2">
+        <Link
+          href={`/u/${sink.user.handle}`}
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-elevated text-xs text-ink-2 hover:ring-2 hover:ring-line-strong"
+        >
           {initials(sink.user.handle)}
-        </div>
+        </Link>
         <div className="min-w-0">
-          <div className="truncate text-sm font-medium">{sink.user.handle}</div>
+          <Link
+            href={`/u/${sink.user.handle}`}
+            className="block truncate text-sm font-medium hover:underline"
+          >
+            {sink.user.handle}
+          </Link>
           <div className="text-xs text-ink-3">{timeAgo(sink.createdAt)}</div>
         </div>
       </header>

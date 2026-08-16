@@ -38,7 +38,9 @@ export async function listSinksHandler(
   try {
     const categorySlug =
       typeof req.query.category === 'string' ? req.query.category : undefined;
-    const sinks = await getFeed({ categorySlug, userId: req.user?.id });
+    const authorHandle =
+      typeof req.query.author === 'string' ? req.query.author : undefined;
+    const sinks = await getFeed({ categorySlug, authorHandle, userId: req.user?.id });
     res.json({ sinks });
   } catch (err) {
     next(err);

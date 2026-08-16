@@ -17,6 +17,13 @@ export interface PublicUser {
   handle: string;
 }
 
+/** A public profile (handle + join date) from GET /users/:handle. */
+export interface UserProfile {
+  id: string;
+  handle: string;
+  createdAt: string;
+}
+
 export interface Comment {
   id: string;
   body: string;
