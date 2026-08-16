@@ -11,6 +11,7 @@
 
 import express, { type NextFunction, type Request, type Response } from 'express';
 import cors from 'cors';
+import { getAllowedOrigins } from './lib/config.js';
 import categoriesRouter from './routes/categories.routes.js';
 import usersRouter from './routes/users.routes.js';
 import sinksRouter from './routes/sinks.routes.js';
@@ -24,10 +25,12 @@ export function createApp() {
   const app = express();
 
   // Allow the frontend (a different origin in dev: :5173 → :4000) to call the
-  // API. FRONTEND_URL overrides the dev default. Without this, the browser
-  // blocks cross-origin requests before they reach any route.
-  const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:5173';
-  app.use(cors({ origin: frontendUrl, credentials: true }));
+  // API. FRONTEND_URL is a comma-separated list of allowed origins (apex
+  // domain, www, and the *.vercel.app alias all point at the same deploy), and
+  // overrides the dev default. Without this, the browser blocks cross-origin
+  // requests before they reach any route. Passing an array lets the cors
+  // package echo back whichever allowed origin the request actually came from.
+  app.use(cors({ origin: getAllowedOrigins(), credentials: true }));
 
   // Parse JSON request bodies into req.body.
   app.use(express.json());

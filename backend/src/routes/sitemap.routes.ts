@@ -9,12 +9,13 @@
 
 import { Router } from 'express';
 import { getSinkSitemapEntries } from '../services/sinks.service.js';
+import { getCanonicalFrontendUrl } from '../lib/config.js';
 
 const router = Router();
 
 router.get('/sitemap.xml', async (_req, res, next) => {
   try {
-    const base = process.env.FRONTEND_URL ?? 'http://localhost:5173';
+    const base = getCanonicalFrontendUrl();
     const entries = await getSinkSitemapEntries();
     const urls = [
       `<url><loc>${base}/</loc></url>`,
