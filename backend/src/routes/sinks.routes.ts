@@ -15,6 +15,7 @@ import {
   createSinkHandler,
   getSinkHandler,
   listSinksHandler,
+  pollVoteHandler,
   unvoteHandler,
   voteHandler,
 } from '../controllers/sinks.controller.js';
@@ -35,6 +36,8 @@ const createSinkSchema = z.object({
 
 const voteSchema = z.object({ value: z.nativeEnum(VoteValue) });
 
+const pollVoteSchema = z.object({ pollOptionId: z.string().uuid() });
+
 const createCommentSchema = z.object({
   body: z.string().min(1).max(5000),
   parentId: z.string().uuid().optional(),
@@ -51,6 +54,12 @@ router.get('/:id/comments', listCommentsHandler);
 router.post('/', requireAuth, validateBody(createSinkSchema), createSinkHandler);
 router.post('/:id/vote', requireAuth, validateBody(voteSchema), voteHandler);
 router.delete('/:id/vote', requireAuth, unvoteHandler);
+router.post(
+  '/:id/poll-vote',
+  requireAuth,
+  validateBody(pollVoteSchema),
+  pollVoteHandler,
+);
 router.post(
   '/:id/comments',
   requireAuth,
