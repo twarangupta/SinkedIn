@@ -112,7 +112,7 @@ export function SinkComposer({ categories }: { categories: Category[] }) {
           onClick={startComposing}
           className="min-h-[72px] flex-1 rounded-lg border border-line bg-elevated px-4 py-3 text-left text-sm text-ink-3 hover:border-line-strong"
         >
-          Drop a Sink — a rejection, a rant, or a small win…
+          Drop a Sink — a bad-boss rant, a rejection, a raise, a small win…
         </button>
       </div>
     );
