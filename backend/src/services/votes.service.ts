@@ -55,6 +55,63 @@ export async function castVote(
 }
 
 /**
+ * Step a user's vote UP or DOWN, clamped to [-1, +1] — the authoritative source
+ * of the stepper rule. The client only sends a direction; the SERVER reads the
+ * user's actual current vote and moves it exactly one step:
+ *   UP:   Anchor -> none -> Buoy   (Buoy stays Buoy)
+ *   DOWN: Buoy   -> none -> Anchor (Anchor stays Anchor)
+ * Because the clamp lives here, a stale/unhydrated client can never cause a
+ * 2-point swing (the bug where a Buoy flipped straight to Anchor).
+ */
+export async function stepVote(
+  userId: string,
+  sinkId: string,
+  direction: 'UP' | 'DOWN',
+): Promise<{ score: number; myVote: VoteValue | null }> {
+  return prisma.$transaction(async (tx) => {
+    const sink = await tx.sink.findFirst({
+      where: { id: sinkId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!sink) throw new AppError('Sink not found', 404);
+
+    const existing = await tx.vote.findUnique({
+      where: { sinkId_userId: { sinkId, userId } },
+      select: { value: true },
+    });
+    const current: VoteValue | null = existing?.value ?? null;
+
+    const next: VoteValue | null =
+      direction === 'UP'
+        ? current === 'ANCHOR'
+          ? null
+          : current === null
+            ? 'BUOY'
+            : current // already BUOY — clamp
+        : current === 'BUOY'
+          ? null
+          : current === null
+            ? 'ANCHOR'
+            : current; // already ANCHOR — clamp
+
+    if (next !== current) {
+      if (next === null) {
+        await tx.vote.deleteMany({ where: { sinkId, userId } });
+      } else {
+        await tx.vote.upsert({
+          where: { sinkId_userId: { sinkId, userId } },
+          update: { value: next },
+          create: { sinkId, userId, value: next },
+        });
+      }
+    }
+
+    const score = await recomputeScore(tx, sinkId);
+    return { score, myVote: next };
+  });
+}
+
+/**
  * All of a user's own vote state, for client-side hydration.
  *
  * The public feed/profile/Sink pages are SSR'd WITHOUT auth (for SEO), so they
