@@ -4,7 +4,7 @@
 
 import type { NextFunction, Request, Response } from 'express';
 import { createSink, getFeed, getSinkById } from '../services/sinks.service.js';
-import { castVote, removeVote } from '../services/votes.service.js';
+import { removeVote, stepVote } from '../services/votes.service.js';
 import { castPollVote } from '../services/pollVotes.service.js';
 
 /**
@@ -71,7 +71,9 @@ export async function getSinkHandler(
 }
 
 /**
- * POST /api/v1/sinks/:id/vote { value } → { score, myVote }. Auth required.
+ * POST /api/v1/sinks/:id/vote { direction: 'UP' | 'DOWN' }
+ *   → { score, myVote }. Auth required.
+ * The server clamps the caller's vote to one step in [-1, +1] (see stepVote).
  */
 export async function voteHandler(
   req: Request,
@@ -83,7 +85,7 @@ export async function voteHandler(
       res.status(401).json({ error: 'Not authenticated' });
       return;
     }
-    const result = await castVote(req.user.id, req.params.id, req.body.value);
+    const result = await stepVote(req.user.id, req.params.id, req.body.direction);
     res.json(result);
   } catch (err) {
     next(err);
