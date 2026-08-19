@@ -18,12 +18,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../lib/api';
 import { SinkCard } from './SinkCard';
+import type { FeedPage } from '../lib/server-api';
 import type { Sink } from '../types';
-
-interface FeedPage {
-  sinks: Sink[];
-  nextCursor: string | null;
-}
 
 export function Feed({
   initialSinks,
