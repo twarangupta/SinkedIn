@@ -5,7 +5,12 @@
 
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '../lib/prisma.js';
-import { castVote, getMyVoteState, removeVote } from './votes.service.js';
+import {
+  castVote,
+  getMyVoteState,
+  removeVote,
+  stepVote,
+} from './votes.service.js';
 
 let userA: string;
 let userB: string;
@@ -76,6 +81,60 @@ describe('castVote / removeVote', () => {
     await expect(
       castVote(userA, '00000000-0000-0000-0000-000000000000', 'BUOY'),
     ).rejects.toThrow(/not found/);
+  });
+});
+
+describe('stepVote (clamped to [-1, +1])', () => {
+  it('UP from none casts a Buoy (+1)', async () => {
+    expect(await stepVote(userA, sinkId, 'UP')).toEqual({
+      score: 1,
+      myVote: 'BUOY',
+    });
+  });
+
+  it('DOWN from none casts an Anchor (-1)', async () => {
+    expect(await stepVote(userA, sinkId, 'DOWN')).toEqual({
+      score: -1,
+      myVote: 'ANCHOR',
+    });
+  });
+
+  it('DOWN from a Buoy lands on 0, never -1 (the reported bug)', async () => {
+    await stepVote(userA, sinkId, 'UP'); // Buoy → score 1
+    const result = await stepVote(userA, sinkId, 'DOWN');
+    expect(result).toEqual({ score: 0, myVote: null }); // 1 → 0, NOT 1 → -1
+    expect(await prisma.vote.count({ where: { sinkId, userId: userA } })).toBe(0);
+  });
+
+  it('UP from an Anchor lands on 0', async () => {
+    await stepVote(userA, sinkId, 'DOWN'); // Anchor
+    expect(await stepVote(userA, sinkId, 'UP')).toEqual({
+      score: 0,
+      myVote: null,
+    });
+  });
+
+  it('UP clamps at Buoy, DOWN clamps at Anchor (no wrap)', async () => {
+    await stepVote(userA, sinkId, 'UP'); // Buoy
+    expect(await stepVote(userA, sinkId, 'UP')).toEqual({
+      score: 1,
+      myVote: 'BUOY',
+    }); // stays Buoy
+    await stepVote(userA, sinkId, 'DOWN'); // → none
+    await stepVote(userA, sinkId, 'DOWN'); // → Anchor
+    expect(await stepVote(userA, sinkId, 'DOWN')).toEqual({
+      score: -1,
+      myVote: 'ANCHOR',
+    }); // stays Anchor
+  });
+
+  it('a single user never shifts the score by more than 1 per click', async () => {
+    await castVote(userB, sinkId, 'BUOY'); // someone else already buoyed → score 1
+    const a1 = await stepVote(userA, sinkId, 'UP'); // score 2
+    expect(a1.score).toBe(2);
+    const a2 = await stepVote(userA, sinkId, 'DOWN'); // 2 → 1 (A back to none), not 2 → 0
+    expect(a2.score).toBe(1);
+    expect(a2.myVote).toBeNull();
   });
 });
 
