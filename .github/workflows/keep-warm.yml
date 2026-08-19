@@ -1,0 +1,40 @@
+# Keep-warm — pings the production backend so Render's free tier doesn't sleep.
+#
+# WHY THIS EXISTS: Render free web services spin down after ~15 min idle, and the
+# next request pays a 20–90s cold-start wake-up — the main source of the app
+# "feeling laggy". Hitting the backend on a schedule keeps the Node process (and
+# the DB connection pool) warm, so real visitors land on an already-awake server.
+#
+# CAVEAT: GitHub scheduled workflows are best-effort and can be delayed under
+# load, so this is not a hard guarantee (an occasional cold start may still slip
+# through). For rock-solid coverage, add an external monitor (e.g. UptimeRobot)
+# hitting /health every 5 min, or move Render off the free tier.
+#
+# Runs every 10 minutes, and can be triggered manually from the Actions tab.
+
+name: keep-warm
+
+on:
+  schedule:
+    - cron: '*/10 * * * *' # every 10 minutes (UTC)
+  workflow_dispatch: {}
+
+# If a previous run is still waking a cold server, don't pile up.
+concurrency:
+  group: keep-warm
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    name: Ping backend
+    runs-on: ubuntu-latest
+    steps:
+      # /health wakes the process; /api/v1/sinks additionally warms the Prisma
+      # connection pool so the first real DB query isn't slow either.
+      # Generous timeout + retries so a legitimate cold wake-up doesn't fail red.
+      - name: Wake + warm the backend
+        run: |
+          BASE="https://sinkedin-drc1.onrender.com"
+          curl -sS --fail --max-time 120 --retry 3 --retry-delay 10 "$BASE/health" > /dev/null
+          curl -sS --fail --max-time 120 --retry 3 --retry-delay 10 "$BASE/api/v1/sinks" > /dev/null
+          echo "backend pinged: awake and warm"
