@@ -3,16 +3,14 @@
 /**
  * VoteControl — Buoy (up) / Anchor (down) with the live score.
  *
- * Logged-out users get the sign-in modal. Clicking the vote you already have
- * removes it (toggle).
+ * The arrows are a STEPPER clamped to [-1, +1]: ▲ moves the caller's vote one
+ * step up (Anchor → none → Buoy), ▼ one step down (Buoy → none → Anchor), and
+ * pressing past an end does nothing. A single user can therefore only ever
+ * shift a Sink's score by 1. Logged-out users get the sign-in modal.
  *
- * Responsiveness without lying about the count: on click we optimistically
- * flip the ARROW highlight (always safe — it just reflects the button you
- * pressed), but the NUMBER is only ever set from the server's authoritative
- * response. We can't optimistically compute the number because the public feed
- * is server-rendered WITHOUT auth (for SEO), so `myVote` arrives as null even
- * for Sinks you've already voted on — trusting it to compute a delta would
- * double-count (1 → 2 → 1). Server-truth for the number avoids that entirely.
+ * The highlight updates optimistically (instant); the number also updates
+ * optimistically once the caller's own votes have hydrated (see lib/myVotes),
+ * then reconciles to the server's authoritative score.
  */
 
 import { useEffect, useState } from 'react';
@@ -47,41 +45,48 @@ export function VoteControl({
     setCurrent(myVotes.voteBySink.get(sinkId) ?? null);
   }, [myVotes.loaded, myVotes.voteBySink, sinkId]);
 
-  const vote = async (value: 'BUOY' | 'ANCHOR') => {
+  const vote = async (direction: 'UP' | 'DOWN') => {
     if (!session) {
       open();
       return;
     }
     if (busy) return;
 
-    // Toggling the vote you already hold removes it.
-    const removing = current === value;
-    const nextVote: Vote = removing ? null : value;
+    const weight = (v: Vote) => (v === 'BUOY' ? 1 : v === 'ANCHOR' ? -1 : 0);
 
-    // Snapshot the highlight for revert-on-error.
+    // Best-effort optimistic guess for instant feedback. We only send the
+    // DIRECTION — the SERVER reads the caller's real vote and clamps the step to
+    // [-1, +1] (see stepVote), so a stale/unhydrated guess can never cause a
+    // 2-point swing; it just reconciles to the server's answer.
+    const guess: Vote =
+      direction === 'UP'
+        ? current === 'ANCHOR'
+          ? null
+          : (current ?? 'BUOY')
+        : current === 'BUOY'
+          ? null
+          : (current ?? 'ANCHOR');
+
     const prevVote = current;
+    const prevCount = count;
 
-    // Optimistically flip ONLY the arrow highlight (safe — it just reflects the
-    // button pressed). The number is left untouched until the server answers.
-    setCurrent(nextVote);
+    setCurrent(guess);
+    // Only nudge the number optimistically once votes have hydrated, so the
+    // guess is accurate; otherwise wait for the server's authoritative score.
+    if (myVotes.loaded) setCount((c) => c + weight(guess) - weight(prevVote));
     setBusy(true);
 
     try {
-      const result = removing
-        ? await apiFetch<{ score: number; myVote: Vote }>(
-            `/api/v1/sinks/${sinkId}/vote`,
-            { method: 'DELETE' },
-          )
-        : await apiFetch<{ score: number; myVote: Vote }>(
-            `/api/v1/sinks/${sinkId}/vote`,
-            { method: 'POST', body: JSON.stringify({ value }) },
-          );
-      // Authoritative values from the server — the only source for the number.
+      const result = await apiFetch<{ score: number; myVote: Vote }>(
+        `/api/v1/sinks/${sinkId}/vote`,
+        { method: 'POST', body: JSON.stringify({ direction }) },
+      );
+      // Server truth — clamped, so at most a 1-point move.
       setCount(result.score);
       setCurrent(result.myVote);
     } catch {
-      // Revert the optimistic highlight if the request failed.
       setCurrent(prevVote);
+      setCount(prevCount);
     } finally {
       setBusy(false);
     }
@@ -90,7 +95,7 @@ export function VoteControl({
   return (
     <div className="flex items-center gap-2 rounded-lg border border-line px-2 py-1">
       <button
-        onClick={() => vote('BUOY')}
+        onClick={() => vote('UP')}
         aria-label="Buoy (upvote)"
         className={`leading-none ${current === 'BUOY' ? 'text-buoy' : 'text-ink-3 hover:text-buoy'}`}
       >
@@ -108,7 +113,7 @@ export function VoteControl({
         {count}
       </span>
       <button
-        onClick={() => vote('ANCHOR')}
+        onClick={() => vote('DOWN')}
         aria-label="Anchor (downvote)"
         className={`leading-none ${current === 'ANCHOR' ? 'text-anchor' : 'text-ink-3 hover:text-anchor'}`}
       >
