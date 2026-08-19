@@ -10,13 +10,13 @@ import { Analytics } from '../components/Analytics';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'SinkedIn — the real side of the job hunt',
+  title: 'SinkedIn',
   description:
-    'The honest, darkly-funny side of the job hunt. Rejections, ghosting, interview stories, and comebacks — posted anonymously.',
+    'The honest, darkly-funny side of work and the job market. Bad bosses, burnout, rejections, wins — posted anonymously.',
   openGraph: {
-    title: 'SinkedIn — the real side of the job hunt',
+    title: 'SinkedIn',
     description:
-      'The honest, darkly-funny side of the job hunt, posted anonymously.',
+      'The honest, darkly-funny side of work and the job market, posted anonymously.',
     type: 'website',
   },
 };

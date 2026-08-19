@@ -17,9 +17,14 @@ async function getJson<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export async function getFeedServer(): Promise<Sink[]> {
-  const { sinks } = await getJson<{ sinks: Sink[] }>('/api/v1/sinks');
-  return sinks;
+/** One page of the feed: the Sinks plus the cursor for the next page (or null). */
+export interface FeedPage {
+  sinks: Sink[];
+  nextCursor: string | null;
+}
+
+export async function getFeedServer(): Promise<FeedPage> {
+  return getJson<FeedPage>('/api/v1/sinks');
 }
 
 export async function getCategoriesServer(): Promise<Category[]> {

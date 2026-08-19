@@ -6,16 +6,30 @@
  * The comments are fetched server-side (SSR, good for SEO) and passed in as a
  * flat list; this client component builds the reply tree and handles composing.
  * Public-first: composing prompts sign-in when logged out. After posting we
- * router.refresh() to re-pull the server-rendered comments.
+ * append the server's returned comment straight into local state — no
+ * router.refresh(), so the new comment shows after a single round-trip instead
+ * of two (post + full-page SSR re-pull) and with no page flash.
  */
 
-import { useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useAuth } from '../lib/auth';
 import { useAuthModal } from '../lib/authModal';
 import { apiFetch } from '../lib/api';
+import { avatarColor, initials, timeAgo } from '../lib/format';
 import { Button } from './ui/Button';
 import type { Comment } from '../types';
+
+/** Small round avatar with a stable per-handle colour. */
+function Avatar({ handle, size = 'md' }: { handle: string; size?: 'sm' | 'md' }) {
+  const dim = size === 'sm' ? 'h-7 w-7 text-[10px]' : 'h-9 w-9 text-xs';
+  return (
+    <div
+      className={`flex ${dim} shrink-0 items-center justify-center rounded-full font-medium ${avatarColor(handle)}`}
+    >
+      {initials(handle)}
+    </div>
+  );
+}
 
 interface CommentNode extends Comment {
   replies: CommentNode[];
@@ -33,42 +47,44 @@ function buildTree(comments: Comment[]): CommentNode[] {
   return roots;
 }
 
-function initials(handle: string): string {
-  return handle.replace(/[^A-Za-z]/g, '').slice(0, 2).toUpperCase() || '::';
-}
-
-function timeAgo(iso: string): string {
-  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
-}
-
 /** Text box + submit. Prompts sign-in when logged out. */
 function Composer({
   sinkId,
   parentId,
   placeholder,
   onDone,
+  onAdded,
 }: {
   sinkId: string;
   parentId?: string;
   placeholder: string;
   onDone?: () => void;
+  onAdded: (comment: Comment) => void;
 }) {
   const { session } = useAuth();
   const { open } = useAuthModal();
-  const router = useRouter();
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
+  const taRef = useRef<HTMLTextAreaElement>(null);
+
+  // Grow the textarea from one line up to a cap as the user types.
+  const autoGrow = () => {
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
+  };
 
   if (!session) {
     return (
-      <Button onClick={open} variant="ghost">
-        Sign in to comment
-      </Button>
+      <button
+        onClick={open}
+        className="w-full rounded-lg border border-dashed border-line bg-elevated/40 px-4 py-3 text-left text-sm text-ink-3 hover:border-line-strong hover:text-ink"
+      >
+        {parentId
+          ? 'Sign in to reply…'
+          : 'Add a comment — sign in to join the conversation…'}
+      </button>
     );
   }
 
@@ -77,37 +93,48 @@ function Composer({
     if (!body.trim() || busy) return;
     setBusy(true);
     try {
-      await apiFetch(`/api/v1/sinks/${sinkId}/comments`, {
-        method: 'POST',
-        body: JSON.stringify({
-          body: body.trim(),
-          ...(parentId ? { parentId } : {}),
-        }),
-      });
+      const { comment } = await apiFetch<{ comment: Comment }>(
+        `/api/v1/sinks/${sinkId}/comments`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            body: body.trim(),
+            ...(parentId ? { parentId } : {}),
+          }),
+        },
+      );
       setBody('');
+      if (taRef.current) taRef.current.style.height = 'auto'; // shrink back
+      onAdded(comment);
       onDone?.();
-      router.refresh();
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <form onSubmit={submit} className="space-y-2">
+    <form
+      onSubmit={submit}
+      className="rounded-lg border border-line bg-elevated/40 px-3 py-2 transition-colors focus-within:border-primary/60"
+    >
       <textarea
+        ref={taRef}
+        rows={1}
         placeholder={placeholder}
         value={body}
-        onChange={(e) => setBody(e.target.value)}
-        rows={parentId ? 2 : 3}
-        className="w-full rounded-lg border border-line bg-elevated px-3 py-2 text-sm text-ink outline-none focus:border-primary"
+        onChange={(e) => {
+          setBody(e.target.value);
+          autoGrow();
+        }}
+        className="block max-h-40 w-full resize-none bg-transparent text-sm leading-6 text-ink outline-none placeholder:text-ink-3"
       />
-      <div className="flex justify-end gap-2">
+      <div className="mt-1.5 flex items-center justify-end gap-2">
         {onDone && (
-          <Button type="button" variant="ghost" onClick={onDone}>
+          <Button type="button" size="sm" variant="ghost" onClick={onDone}>
             Cancel
           </Button>
         )}
-        <Button type="submit" disabled={busy || !body.trim()}>
+        <Button type="submit" size="sm" disabled={busy || !body.trim()}>
           {busy ? 'Posting…' : parentId ? 'Reply' : 'Comment'}
         </Button>
       </div>
@@ -115,23 +142,31 @@ function Composer({
   );
 }
 
-function CommentItem({ node, sinkId }: { node: CommentNode; sinkId: string }) {
+function CommentItem({
+  node,
+  sinkId,
+  onAdded,
+}: {
+  node: CommentNode;
+  sinkId: string;
+  onAdded: (comment: Comment) => void;
+}) {
   const [replying, setReplying] = useState(false);
   return (
     <div className="space-y-2">
       <div className="flex gap-3">
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-elevated text-[10px] text-ink-2">
-          {initials(node.user.handle)}
-        </div>
+        <Avatar handle={node.user.handle} size="sm" />
         <div className="min-w-0 flex-1">
-          <div className="text-xs text-ink-3">
-            <span className="text-ink-2">{node.user.handle}</span> ·{' '}
-            {timeAgo(node.createdAt)}
+          <div className="text-xs">
+            <span className="font-medium text-ink-2">{node.user.handle}</span>
+            <span className="text-ink-3"> · {timeAgo(node.createdAt)}</span>
           </div>
-          <p className="whitespace-pre-wrap text-sm text-ink">{node.body}</p>
+          <p className="mt-0.5 whitespace-pre-wrap text-sm leading-relaxed text-ink">
+            {node.body}
+          </p>
           <button
             onClick={() => setReplying((v) => !v)}
-            className="mt-1 text-xs text-ink-3 hover:text-ink"
+            className="mt-1 text-xs font-medium text-ink-3 hover:text-primary"
           >
             {replying ? 'Cancel' : 'Reply'}
           </button>
@@ -142,6 +177,7 @@ function CommentItem({ node, sinkId }: { node: CommentNode; sinkId: string }) {
                 parentId={node.id}
                 placeholder="Write a reply…"
                 onDone={() => setReplying(false)}
+                onAdded={onAdded}
               />
             </div>
           )}
@@ -150,7 +186,12 @@ function CommentItem({ node, sinkId }: { node: CommentNode; sinkId: string }) {
       {node.replies.length > 0 && (
         <div className="ml-5 space-y-3 border-l border-line pl-4">
           {node.replies.map((child) => (
-            <CommentItem key={child.id} node={child} sinkId={sinkId} />
+            <CommentItem
+              key={child.id}
+              node={child}
+              sinkId={sinkId}
+              onAdded={onAdded}
+            />
           ))}
         </div>
       )}
@@ -160,24 +201,43 @@ function CommentItem({ node, sinkId }: { node: CommentNode; sinkId: string }) {
 
 export function CommentSection({
   sinkId,
-  comments,
+  comments: initialComments,
 }: {
   sinkId: string;
   comments: Comment[];
 }) {
+  const [comments, setComments] = useState(initialComments);
+
+  // Reflect a fresh server render (e.g. navigating back to the Sink).
+  useEffect(() => {
+    setComments(initialComments);
+  }, [initialComments]);
+
+  // Append a newly-posted comment (top-level or reply), ignoring dupes.
+  const addComment = (comment: Comment) =>
+    setComments((prev) =>
+      prev.some((c) => c.id === comment.id) ? prev : [...prev, comment],
+    );
+
   const tree = buildTree(comments);
   return (
-    <section className="space-y-5 rounded-xl border border-line bg-surface p-5">
-      <h2 className="text-sm font-medium text-ink-2">
-        {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
+    <section className="space-y-4 rounded-xl border border-line bg-surface p-5">
+      <h2 className="text-base font-semibold text-ink">
+        {comments.length} {comments.length === 1 ? 'Comment' : 'Comments'}
       </h2>
-      <Composer sinkId={sinkId} placeholder="Add a comment…" />
-      {tree.length > 0 && (
-        <div className="space-y-4">
+      <Composer sinkId={sinkId} placeholder="Share your take…" onAdded={addComment} />
+      {tree.length > 0 ? (
+        <div className="divide-y divide-line border-t border-line">
           {tree.map((node) => (
-            <CommentItem key={node.id} node={node} sinkId={sinkId} />
+            <div key={node.id} className="py-4 first:pt-4 last:pb-0">
+              <CommentItem node={node} sinkId={sinkId} onAdded={addComment} />
+            </div>
           ))}
         </div>
+      ) : (
+        <p className="pt-1 text-sm text-ink-3">
+          No comments yet — be the first to weigh in.
+        </p>
       )}
     </section>
   );

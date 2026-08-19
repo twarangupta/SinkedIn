@@ -118,7 +118,7 @@ const categories: Array<{
     name: 'Advice',
     slug: 'advice',
     color: '#0EA5E9',
-    description: 'Ask for guidance, or share a hard won lesson from your own hunt.',
+    description: 'Ask for guidance, or share a hard-won lesson from work or the job hunt.',
     showsCompany: false,
     showsConclusion: false,
     allowsPoll: true,
@@ -128,7 +128,7 @@ const categories: Array<{
     name: 'Discussion',
     slug: 'discussion',
     color: '#14B8A6',
-    description: 'Start a conversation about anything in the job hunt.',
+    description: 'Start a conversation about work, careers, or the job hunt.',
     showsCompany: false,
     showsConclusion: false,
     allowsPoll: true,
@@ -148,7 +148,7 @@ const categories: Array<{
     name: 'Meme',
     slug: 'meme',
     color: '#EC4899',
-    description: 'The absurd, funny side of job hunting. Keep it light.',
+    description: 'The absurd, funny side of work and job hunting. Keep it light.',
     showsCompany: false,
     showsConclusion: false,
     allowsPoll: false,
@@ -171,6 +171,53 @@ const categories: Array<{
     description:
       'The redemption arc. Tell how you turned it around and finally landed what you wanted.',
     showsCompany: true,
+    showsConclusion: false,
+    allowsPoll: false,
+    requiresPoll: false,
+  },
+
+  // --- "Wide door": employed-professional categories, not just job-hunting.
+  // Same anti-LinkedIn voice; widens who sees themselves here. ---
+  {
+    name: 'Bad Boss',
+    slug: 'bad-boss',
+    color: '#F43F5E',
+    description:
+      'Manager horror stories, micromanagement, and leadership done wrong.',
+    showsCompany: true,
+    showsConclusion: false,
+    allowsPoll: false,
+    requiresPoll: false,
+  },
+  {
+    name: 'Burnout',
+    slug: 'burnout',
+    color: '#A78BFA',
+    description:
+      'The grind, the overwork, the recovery. Vent it, or share what actually helped.',
+    showsCompany: false,
+    showsConclusion: false,
+    allowsPoll: false,
+    requiresPoll: false,
+  },
+  {
+    name: 'Win',
+    slug: 'win',
+    color: '#34D399',
+    description:
+      'The good stuff — a promotion, a raise, a quit-with-a-bang. Brag honestly.',
+    showsCompany: true,
+    showsConclusion: false,
+    allowsPoll: false,
+    requiresPoll: false,
+  },
+  {
+    name: 'Corporate Cringe',
+    slug: 'corporate-cringe',
+    color: '#FBBF24',
+    description:
+      "LinkedIn cringe, buzzword bingo, and “we’re a family” energy. Roast it.",
+    showsCompany: false,
     showsConclusion: false,
     allowsPoll: false,
     requiresPoll: false,

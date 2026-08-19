@@ -7,7 +7,7 @@
 
 import { Router } from 'express';
 import { z } from 'zod';
-import { Conclusion, VoteValue } from '@prisma/client';
+import { Conclusion } from '@prisma/client';
 import { requireAuth } from '../middleware/auth.js';
 import { optionalAuth } from '../middleware/optionalAuth.js';
 import { validateBody } from '../middleware/validate.js';
@@ -34,7 +34,7 @@ const createSinkSchema = z.object({
   pollOptions: z.array(z.string().min(1).max(100)).min(2).max(6).optional(),
 });
 
-const voteSchema = z.object({ value: z.nativeEnum(VoteValue) });
+const voteSchema = z.object({ direction: z.enum(['UP', 'DOWN']) });
 
 const pollVoteSchema = z.object({ pollOptionId: z.string().uuid() });
 

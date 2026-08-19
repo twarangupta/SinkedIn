@@ -9,10 +9,10 @@ import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { RightSidebar } from '@/components/layout/RightSidebar';
 import { SinkComposer } from '@/components/SinkComposer';
-import { SinkCard } from '@/components/SinkCard';
+import { Feed } from '@/components/Feed';
 
 export default async function HomePage() {
-  const [sinks, categories] = await Promise.all([
+  const [feed, categories] = await Promise.all([
     getFeedServer(),
     getCategoriesServer(),
   ]);
@@ -34,13 +34,10 @@ export default async function HomePage() {
             <span className="pb-2 text-ink-3">Latest</span>
           </div>
 
-          {sinks.length === 0 ? (
-            <p className="py-8 text-center text-ink-3">
-              Nothing&apos;s sunk yet. Be the first to overshare.
-            </p>
-          ) : (
-            sinks.map((sink) => <SinkCard key={sink.id} sink={sink} />)
-          )}
+          <Feed
+            initialSinks={feed.sinks}
+            initialNextCursor={feed.nextCursor}
+          />
         </main>
 
         <RightSidebar categories={categories} />

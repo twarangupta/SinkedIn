@@ -11,6 +11,7 @@ import { useAuth } from '../../lib/auth';
 import { useAuthModal } from '../../lib/authModal';
 import { apiFetch } from '../../lib/api';
 import { Button } from '../ui/Button';
+import { BoatMark } from '../BoatMark';
 
 export function Header() {
   const { session, signOut } = useAuth();
@@ -30,9 +31,15 @@ export function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-6">
-        <Link href="/" className="w-52 shrink-0">
-          <span className="font-display text-xl font-bold">
-            SinkedIn<span className="text-violet">.in</span>
+        <Link href="/" className="flex shrink-0 items-center gap-2">
+          <BoatMark size={36} />
+          <span className="leading-tight">
+            <span className="block font-display text-xl font-bold">
+              SinkedIn<span className="text-violet">.in</span>
+            </span>
+            <span className="block text-[13px] text-ink-2">
+              The real side of the job market
+            </span>
           </span>
         </Link>
         <input
@@ -42,7 +49,17 @@ export function Header() {
         <div className="flex items-center gap-3">
           {session ? (
             <>
-              <span className="text-sm text-ink-2">{handle ?? '…'}</span>
+              {handle ? (
+                <Link
+                  href={`/u/${handle}`}
+                  className="text-sm text-ink-2 hover:text-ink hover:underline"
+                  title="Your profile"
+                >
+                  {handle}
+                </Link>
+              ) : (
+                <span className="text-sm text-ink-3">…</span>
+              )}
               <Button variant="ghost" onClick={signOut}>
                 Sign out
               </Button>
