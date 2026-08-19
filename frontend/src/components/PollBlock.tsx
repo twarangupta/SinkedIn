@@ -53,9 +53,29 @@ export function PollBlock({
     }
     if (busy) return;
 
-    // Optimistic highlight only (toggles off if it's already your choice).
-    const prev = current;
-    setCurrent(current === pollOptionId ? null : pollOptionId);
+    const prevCurrent = current;
+    const nextCurrent = current === pollOptionId ? null : pollOptionId; // toggle off
+    const prevOpts = opts;
+
+    // Optimistic highlight (always safe).
+    setCurrent(nextCurrent);
+    // Optimistically move the bar counts too — but only once the caller's own
+    // votes have hydrated (#3), so `current` is accurate and we don't miscount
+    // a Sink they'd already voted on. Each change is +1 to the new option and
+    // -1 from the previous.
+    if (myVotes.loaded) {
+      setOpts((prev) =>
+        prev.map((o) => ({
+          ...o,
+          _count: {
+            votes:
+              o._count.votes +
+              (o.id === nextCurrent ? 1 : 0) -
+              (o.id === prevCurrent ? 1 : 0),
+          },
+        })),
+      );
+    }
     setBusy(true);
     try {
       const result = await apiFetch<{
@@ -65,11 +85,13 @@ export function PollBlock({
         method: 'POST',
         body: JSON.stringify({ pollOptionId }),
       });
-      // Server truth for the counts + confirmed selection.
+      // Reconcile with the server's authoritative counts + selection.
       setOpts(result.pollOptions);
       setCurrent(result.myPollVote);
     } catch {
-      setCurrent(prev); // revert the highlight on failure
+      // Revert both highlight and counts on failure.
+      setCurrent(prevCurrent);
+      setOpts(prevOpts);
     } finally {
       setBusy(false);
     }
