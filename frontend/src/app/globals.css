@@ -35,6 +35,16 @@
 }
 
 @layer base {
+  /*
+   * Global type/space scale. Tailwind's text + spacing sizes are rem-based, so
+   * lowering the root font-size scales the WHOLE system down proportionally —
+   * text and spacing together — keeping everything consistent and symmetric.
+   * 15px ≈ a 6% reduction from the 16px browser default. (Turn this one dial to
+   * 14px for a denser look.)
+   */
+  html {
+    font-size: 15px;
+  }
   body {
     background-color: var(--color-bg);
     color: var(--color-ink);

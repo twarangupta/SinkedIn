@@ -30,23 +30,26 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-6">
-        <Link href="/" className="flex shrink-0 items-center gap-2">
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-6">
+        <Link
+          href="/"
+          className="flex shrink-0 items-center gap-2 lg:w-52"
+        >
           <BoatMark size={36} />
-          <span className="leading-tight">
+          <span className="min-w-0 leading-tight">
             <span className="block font-display text-xl font-bold">
               SinkedIn<span className="text-violet">.in</span>
             </span>
-            <span className="block text-[13px] text-ink-2">
+            <span className="block whitespace-nowrap text-xs text-ink-2">
               The real side of the job market
             </span>
           </span>
         </Link>
         <input
           placeholder="Search Sinks, categories, people…"
-          className="hidden h-10 flex-1 rounded-lg border border-line bg-elevated px-3 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-primary md:block"
+          className="hidden h-10 min-w-0 flex-1 rounded-lg border border-line bg-elevated px-3 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-primary md:block"
         />
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center justify-end gap-3 xl:w-72">
           {session ? (
             <>
               {handle ? (

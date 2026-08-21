@@ -1,0 +1,150 @@
+# Phase 1 — The core loop (v1) 🔵 ~90% built
+
+← [Phase 0](phase-0-foundation.md) · [Index](README.md) · Next: [Phase 2 — Retention](phase-2-retention.md)
+
+> **Goal:** the minimum that makes **posting a Sink feel good and reading the feed feel engaging.** This is the entire product hypothesis. Nothing downstream has value until it's proven.
+>
+> **Entry gate:** Phase 0 exit gate met.
+>
+> **The split:** *1a* = the posting loop (riskiest — will anyone post?), ship + test alone first. *1b* = the discussion + solidarity layer (comments, polls, reactions), added once 1a is proven.
+
+## What the user can newly do
+Post a Sink (category + text + conditional fields) in under a minute, anonymously · scroll / filter / sort the feed · buoy or anchor · comment and reply (threaded) · vote in polls · one-tap react · view any pseudonymous profile and its post history.
+
+> **Felt experience:** "It's a Reddit for the real side of work — I ranted about a rejection *and* my manager, got 40 buoys and a dozen 'been there' replies, voted on a '12 LPA?' poll, and read three interview experiences for a company I'm interviewing at."
+
+---
+
+## Data model at Phase 1
+
+```mermaid
+erDiagram
+    User ||--o{ Sink : posts
+    User ||--o{ Vote : casts
+    User ||--o{ Comment : writes
+    User ||--o{ PollVote : casts
+    User ||--o{ Reaction : taps
+    User ||--o{ Report : files
+    Category ||--o{ Sink : classifies
+    Sink ||--o{ Vote : has
+    Sink ||--o{ Comment : has
+    Sink ||--o{ PollOption : has
+    Sink ||--o{ Reaction : has
+    PollOption ||--o{ PollVote : has
+    Comment ||--o{ Comment : "parentId (threaded)"
+
+    User { string id PK; string handle UK; string supabaseUserId UK; datetime createdAt }
+    Category { string id PK; string name UK; string slug UK; string color; string description; bool showsCompany; bool showsConclusion; bool allowsPoll; bool requiresPoll }
+    Sink { string id PK; string title; string body; string company "free text"; enum conclusion; int score "cached"; datetime deletedAt; string categoryId FK; string userId FK }
+    Vote { string id PK; enum value "BUOY|ANCHOR"; string sinkId FK; string userId FK }
+    Comment { string id PK; string body; string parentId FK; datetime deletedAt; string sinkId FK; string userId FK }
+    PollOption { string id PK; string label; int position; string sinkId FK }
+    PollVote { string id PK; string pollOptionId FK; string userId FK }
+    Reaction { string id PK; string kind; string sinkId FK; string userId FK }
+    Report { string id PK; string targetType; string targetId; string reason; string status }
+```
+- `Vote` has `@@unique([sinkId, userId])`; `PollVote` enforces **one vote per poll** (not per option) in the service.
+- **Privacy:** every public query `select`s only safe fields — `email`/`supabaseUserId` never leave the backend.
+- **New this phase:** `Reaction` + per-category reaction config (1b); `Report` (moderation).
+
+---
+
+## 1a — the posting loop
+
+### Post a Sink `[built]`
+Category-first composer: choose a category → the form reveals only that category's conditional fields (company, conclusion, poll options) driven by the category's config flags → Zod-validated at the route, **category-conditional rules enforced in the service** (e.g. `requiresPoll`, `conclusion === OTHER` needs free text, unused fields stripped). Manual, no AI, <60s.
+
+```mermaid
+sequenceDiagram
+    participant U as User (client)
+    participant API as Express (requireAuth → Zod)
+    participant Svc as sinks.service (createSink)
+    participant DB as Postgres
+    U->>API: POST /sinks {categoryId, title, body, company?, conclusion?, pollOptions?}
+    API->>API: verify JWT locally · validate body (Zod)
+    API->>Svc: createSink(userId, input)
+    Svc->>DB: look up category config
+    Svc->>Svc: apply conditional rules (strip/require by flags)
+    Svc->>DB: insert Sink (+ PollOptions if any)
+    Svc-->>API: public Sink (handle only, no PII)
+    API-->>U: 201 { sink }
+```
+
+### Categories `[built]` — the "wide door" in data
+Seeded, extensible `Category` table spanning **both worlds**:
+- **Job-hunt:** Interview Experience, Rejection, Ghosted, Offer, Salary, Layoff, Comeback
+- **Working-life:** Bad Boss, Burnout, Win, Corporate Cringe
+- **General:** Poll, Advice, Discussion, Rant, Meme, Resource
+
+Adding a category (or changing which fields it reveals) is a **data** change — no deploy. This is how "add more categories later" stays free.
+
+### The feed `[built]`
+Server-rendered (Next.js server components) for SEO; **infinite-scroll pagination** (10/page, **cursor-based** on `createdAt` — stable when new Sinks arrive mid-scroll); category filter; `SinkCard`s with category pills. Client fetches later pages with the JWT so vote highlights come pre-attached.
+
+### Buoys & Anchors `[built]` — the clamped stepper
+`score` = buoys − anchors, cached on the Sink. A user's contribution is **clamped to [-1, +1]** and moves **one step per click**. The clamp is **server-side** — the client sends only a direction, so stale client state can never swing a score by 2.
+
+```mermaid
+stateDiagram-v2
+    [*] --> None
+    None --> Buoy: ▲ up
+    None --> Anchor: ▼ down
+    Anchor --> None: ▲ up
+    Buoy --> None: ▼ down
+    Buoy --> Buoy: ▲ up (clamp, no-op)
+    Anchor --> Anchor: ▼ down (clamp, no-op)
+    note right of Buoy: contribution +1
+    note right of Anchor: contribution -1
+```
+
+### Profile (basic) `[built]`
+`/u/:handle` — handle, join date, post history; SSR + per-profile share metadata. Handles link to profiles across the feed and from the header (your own).
+
+### Handle system `[built basic / pending picker]`
+Persistent pseudonymous `handle` auto-assigned now (`Adjective_Noun_Number`). **Pending — the picker:** 3–4 auto-suggestions or type-your-own, **live uniqueness check**, **blocklist** (company/role words, admin/mod/official, basic profanity), anonymity nudge.
+
+### Basic moderation `[pending — required before real users]`
+Report/hide on Sinks (the `Report` model), manual review at this scale, **write rate-limiting**, the handle blocklist. (Console tooling comes in Phase 3 when volume demands it.)
+
+### Sort `[partial]`
+Feed is "new" (createdAt desc). **Pending:** "top" (by cached `score`) — needs a `score`-keyed cursor (or capped offset) so it composes with pagination.
+
+---
+
+## 1b — discussion + solidarity
+
+### Comments `[built]`
+Threaded (top-level + replies via `parentId`), **optimistic append** — the posted comment appears from the server's response with no full-page refresh/flash.
+
+### Polls `[built]`
+2–6 options; **one vote per poll** (not per option, enforced in the service); live result bars; optimistic (highlight instant, counts from server).
+
+### Category reactions / solidarity taps `[new · retention #6]`
+One-tap, category-specific reactions beyond voting — Rant → "Been there" / "IKR"; Ghosted → "Classic" / "Same"; Rejection → "F" / "Their loss"; Comeback → "Let's go". A low-friction emotional layer.
+
+**Design locks:**
+- **Separate from `score`** — reactions are solidarity, not ranking; visually and functionally distinct from buoy/anchor.
+- **Config-driven per category** — the reaction set is data on `Category` (like `showsCompany`); adding reactions to a category is a *data* change. Needs the `Reaction` table + a per-category reaction config.
+- One reaction per user per Sink; counts (not lists) on the card to stay cheap.
+- Feeds the Phase-2 "you're not alone" counter later.
+
+**Gate:** build only after post/vote/comment are live and users prove they engage. A one-tap reaction is lower friction than a comment → far more people participate.
+
+---
+
+## The critical non-code activity — seeding
+Seed **30–50 real, relatable Sinks** across a few categories (yours, friends' with permission, curated-public with attribution) **before** showing anyone. An empty feed feels dead; a seeded one feels alive — **load-bearing for the whole test.** Demo/synthetic data stays clearly marked + removable and never masquerades as real on the indexed product.
+
+## Tradeoffs & decisions
+- **Reactions vs. clutter:** keep them counts, not lists; distinct from votes so the ranking signal stays legible.
+- **Moderation depth:** manual review is fine now — but ship report/hide + rate limits as cheap day-one insurance (a public post-anything community *will* attract abuse).
+- **"Top" sort × pagination:** cursor must switch key (createdAt → score) per sort; decide at build.
+- **Interview-Experience data hygiene:** encourage a lightly-structured body (rounds/questions/outcome) now so the Phase-3 SEO hub has clean input — **do not build the hub here.**
+
+## Safety this phase
+Report/hide + manual review; handle blocklist; write rate-limits; zero PII in any public response.
+
+## Exit gate — the most important in the project
+The loop works end-to-end, deployed, **and the qualitative test passes**: you + a handful of real early users genuinely find posting satisfying and reading/voting/commenting/reacting engaging — not "it functions" but *"it feels good."*
+
+**If it doesn't feel good, stop and fix the loop. Do not proceed to Phase 2.** No later feature rescues a dead core loop. This is the honest gate that saves you from building a beautiful dead product.
