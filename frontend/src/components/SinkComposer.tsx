@@ -233,10 +233,14 @@ export function SinkComposer({ categories }: { categories: Category[] }) {
       {error && <p className="text-sm text-danger">{error}</p>}
 
       <div className="flex justify-end gap-2">
-        <Button variant="ghost" onClick={reset}>
+        <Button size="sm" variant="ghost" onClick={reset}>
           Cancel
         </Button>
-        <Button onClick={submit} disabled={busy || !categoryId || !title.trim()}>
+        <Button
+          size="sm"
+          onClick={submit}
+          disabled={busy || !categoryId || !title.trim()}
+        >
           {busy ? 'Posting…' : '+ New Sink'}
         </Button>
       </div>

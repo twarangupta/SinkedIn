@@ -21,7 +21,7 @@ import type { Comment } from '../types';
 
 /** Small round avatar with a stable per-handle colour. */
 function Avatar({ handle, size = 'md' }: { handle: string; size?: 'sm' | 'md' }) {
-  const dim = size === 'sm' ? 'h-7 w-7 text-[10px]' : 'h-9 w-9 text-xs';
+  const dim = size === 'sm' ? 'h-7 w-7 text-[0.65rem]' : 'h-9 w-9 text-xs';
   return (
     <div
       className={`flex ${dim} shrink-0 items-center justify-center rounded-full font-medium ${avatarColor(handle)}`}
