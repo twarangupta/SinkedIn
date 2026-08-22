@@ -9,16 +9,17 @@
  * onCreated() so the feed refreshes.
  */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../lib/auth';
 import { useAuthModal } from '../lib/authModal';
+import { useMe } from '../lib/me';
 import { apiFetch } from '../lib/api';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Avatar } from './avatar/Avatar';
 import { CategoryInfoModal } from './CategoryInfoModal';
-import type { Category, PublicUser } from '../types';
+import type { Category } from '../types';
 
 const CONCLUSIONS = ['GHOSTED', 'REJECTED', 'ACCEPTED', 'WITHDREW', 'PENDING', 'OTHER'];
 const fieldClass =
@@ -39,19 +40,9 @@ export function SinkComposer({ categories }: { categories: Category[] }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
-  const [me, setMe] = useState<PublicUser>();
-
-  // Fetch the caller's avatar so the composer shows *their* creature, not a
-  // grey blank, matching every other avatar on the page.
-  useEffect(() => {
-    if (!session) {
-      setMe(undefined);
-      return;
-    }
-    apiFetch<{ user: PublicUser }>('/api/v1/users/me')
-      .then((res) => setMe(res.user))
-      .catch(() => undefined);
-  }, [session]);
+  // The caller's avatar (from the shared MeProvider) so the composer shows
+  // *their* creature, not a grey blank, matching every other avatar on the page.
+  const { me } = useMe();
 
   const category = categories.find((c) => c.id === categoryId);
 
@@ -130,7 +121,7 @@ export function SinkComposer({ categories }: { categories: Category[] }) {
           onClick={startComposing}
           className="min-h-[72px] flex-1 rounded-lg border border-line bg-elevated px-4 py-3 text-left text-sm text-ink-3 hover:border-line-strong"
         >
-          Drop a Sink — a bad-boss rant, a rejection, a raise, a small win…
+          Drop a Sink: a bad-boss rant, a rejection, a raise, a small win…
         </button>
       </div>
     );
