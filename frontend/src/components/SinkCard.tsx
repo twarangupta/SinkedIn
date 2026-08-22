@@ -10,7 +10,8 @@ import Link from 'next/link';
 import { CategoryPill } from './CategoryPill';
 import { VoteControl } from './VoteControl';
 import { PollBlock } from './PollBlock';
-import { initials, timeAgo } from '../lib/format';
+import { Avatar } from './avatar/Avatar';
+import { timeAgo } from '../lib/format';
 import type { Sink } from '../types';
 
 export function SinkCard({ sink }: { sink: Sink }) {
@@ -19,9 +20,10 @@ export function SinkCard({ sink }: { sink: Sink }) {
       <header className="mb-3 flex items-center gap-3">
         <Link
           href={`/u/${sink.user.handle}`}
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-elevated text-xs text-ink-2 hover:ring-2 hover:ring-line-strong"
+          className="rounded-full hover:ring-2 hover:ring-line-strong"
+          aria-label={`${sink.user.handle} profile`}
         >
-          {initials(sink.user.handle)}
+          <Avatar avatarId={sink.user.avatarId} handle={sink.user.handle} size={36} />
         </Link>
         <div className="min-w-0">
           <Link

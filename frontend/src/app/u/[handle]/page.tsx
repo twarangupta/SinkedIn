@@ -10,8 +10,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getUserProfileServer, getUserSinksServer } from '@/lib/server-api';
-import { initials } from '@/lib/format';
 import { Header } from '@/components/layout/Header';
+import { Avatar } from '@/components/avatar/Avatar';
 import { SinkCard } from '@/components/SinkCard';
 
 export async function generateMetadata({
@@ -51,9 +51,7 @@ export default async function ProfilePage({
         </Link>
 
         <header className="flex items-center gap-4 rounded-xl border border-line bg-surface p-5">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-elevated text-lg text-ink-2">
-            {initials(user.handle)}
-          </div>
+          <Avatar avatarId={user.avatarId} handle={user.handle} size={56} />
           <div className="min-w-0">
             <h1 className="truncate font-display text-xl font-medium">{user.handle}</h1>
             <div className="text-sm text-ink-3">
@@ -64,7 +62,9 @@ export default async function ProfilePage({
         </header>
 
         {sinks.length === 0 ? (
-          <p className="py-8 text-center text-ink-3">No Sinks yet.</p>
+          <p className="py-8 text-center text-ink-3">
+            Hasn&apos;t made a splash yet.
+          </p>
         ) : (
           <div className="space-y-4">
             {sinks.map((sink) => (

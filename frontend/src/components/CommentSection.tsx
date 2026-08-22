@@ -15,21 +15,10 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useAuth } from '../lib/auth';
 import { useAuthModal } from '../lib/authModal';
 import { apiFetch } from '../lib/api';
-import { avatarColor, initials, timeAgo } from '../lib/format';
+import { timeAgo } from '../lib/format';
+import { Avatar } from './avatar/Avatar';
 import { Button } from './ui/Button';
 import type { Comment } from '../types';
-
-/** Small round avatar with a stable per-handle colour. */
-function Avatar({ handle, size = 'md' }: { handle: string; size?: 'sm' | 'md' }) {
-  const dim = size === 'sm' ? 'h-7 w-7 text-[0.65rem]' : 'h-9 w-9 text-xs';
-  return (
-    <div
-      className={`flex ${dim} shrink-0 items-center justify-center rounded-full font-medium ${avatarColor(handle)}`}
-    >
-      {initials(handle)}
-    </div>
-  );
-}
 
 interface CommentNode extends Comment {
   replies: CommentNode[];
@@ -155,7 +144,11 @@ function CommentItem({
   return (
     <div className="space-y-2">
       <div className="flex gap-3">
-        <Avatar handle={node.user.handle} size="sm" />
+        <Avatar
+          avatarId={node.user.avatarId}
+          handle={node.user.handle}
+          size={28}
+        />
         <div className="min-w-0 flex-1">
           <div className="text-xs">
             <span className="font-medium text-ink-2">{node.user.handle}</span>
@@ -236,7 +229,7 @@ export function CommentSection({
         </div>
       ) : (
         <p className="pt-1 text-sm text-ink-3">
-          No comments yet — be the first to weigh in.
+          No comments yet. Be the first to pile on.
         </p>
       )}
     </section>

@@ -15,12 +15,14 @@ export interface Category {
 export interface PublicUser {
   id: string;
   handle: string;
+  avatarId: string;
 }
 
 /** A public profile (handle + join date) from GET /users/:handle. */
 export interface UserProfile {
   id: string;
   handle: string;
+  avatarId: string;
   createdAt: string;
 }
 

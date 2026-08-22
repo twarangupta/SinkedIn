@@ -90,11 +90,11 @@ export function Feed({
       {/* Sentinel + status; only present while there may be more to load. */}
       {cursor && <div ref={sentinelRef} aria-hidden className="h-px" />}
       {loading && (
-        <p className="py-4 text-center text-sm text-ink-3">Loading more…</p>
+        <p className="py-4 text-center text-sm text-ink-3">Dredging up more…</p>
       )}
       {!cursor && (
         <p className="py-4 text-center text-sm text-ink-3">
-          You&apos;ve reached the bottom.
+          You&apos;ve hit the seafloor. That&apos;s everything for now.
         </p>
       )}
     </div>

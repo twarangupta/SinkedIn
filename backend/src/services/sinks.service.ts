@@ -36,7 +36,7 @@ const sinkPublicSelect = {
   score: true,
   createdAt: true,
   category: { select: { id: true, name: true, slug: true, color: true } },
-  user: { select: { id: true, handle: true } },
+  user: { select: { id: true, handle: true, avatarId: true } },
   pollOptions: {
     select: {
       id: true,

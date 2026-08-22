@@ -20,7 +20,7 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen">
       <Header />
-      <div className="mx-auto flex max-w-6xl gap-6 px-6 py-6">
+      <div className="mx-auto flex max-w-7xl gap-6 px-4 py-6 sm:px-6">
         <Sidebar />
 
         <main className="min-w-0 flex-1 space-y-4">
