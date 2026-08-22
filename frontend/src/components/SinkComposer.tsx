@@ -9,15 +9,16 @@
  * onCreated() so the feed refreshes.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../lib/auth';
 import { useAuthModal } from '../lib/authModal';
 import { apiFetch } from '../lib/api';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
+import { Avatar } from './avatar/Avatar';
 import { CategoryInfoModal } from './CategoryInfoModal';
-import type { Category } from '../types';
+import type { Category, PublicUser } from '../types';
 
 const CONCLUSIONS = ['GHOSTED', 'REJECTED', 'ACCEPTED', 'WITHDREW', 'PENDING', 'OTHER'];
 const fieldClass =
@@ -38,6 +39,19 @@ export function SinkComposer({ categories }: { categories: Category[] }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [me, setMe] = useState<PublicUser>();
+
+  // Fetch the caller's avatar so the composer shows *their* creature, not a
+  // grey blank, matching every other avatar on the page.
+  useEffect(() => {
+    if (!session) {
+      setMe(undefined);
+      return;
+    }
+    apiFetch<{ user: PublicUser }>('/api/v1/users/me')
+      .then((res) => setMe(res.user))
+      .catch(() => undefined);
+  }, [session]);
 
   const category = categories.find((c) => c.id === categoryId);
 
@@ -107,7 +121,11 @@ export function SinkComposer({ categories }: { categories: Category[] }) {
   if (!expanded) {
     return (
       <div className="flex items-start gap-3 rounded-xl border border-line bg-surface p-4">
-        <div className="h-9 w-9 shrink-0 rounded-full bg-elevated" />
+        {me ? (
+          <Avatar avatarId={me.avatarId} handle={me.handle} size={36} />
+        ) : (
+          <div className="h-9 w-9 shrink-0 rounded-full bg-elevated" />
+        )}
         <button
           onClick={startComposing}
           className="min-h-[72px] flex-1 rounded-lg border border-line bg-elevated px-4 py-3 text-left text-sm text-ink-3 hover:border-line-strong"
