@@ -9,11 +9,17 @@
 
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
+import {
+  defaultAvatarForHandle,
+  isValidAvatarId,
+  type AvatarId,
+} from '../lib/avatars.js';
 
 /** The public shape of a user — safe to return from any API response. */
 export interface PublicUser {
   id: string;
   handle: string;
+  avatarId: string;
   createdAt: Date;
 }
 
@@ -21,23 +27,33 @@ export interface PublicUser {
 const publicUserSelect = {
   id: true,
   handle: true,
+  avatarId: true,
   createdAt: true,
 } satisfies Prisma.UserSelect;
 
 // --- Handle generation (Phase 0: auto-generated). ---
 // Word lists are on-theme and single-word (no underscores) so the final
-// handle is always `Adjective_Noun_Number`, e.g. "Rejected_Raccoon_402".
-// The richer user-chosen picker (suggestions, uniqueness UI, blocklist) is a
-// later slice; this just guarantees every user gets a unique handle on signup.
+// handle is always `Adjective_Noun_Number`, e.g. "Drowning_Guppy_402".
+// The tone is the brand: darkly-funny, sarcastic job-hunt energy; the nouns
+// lean into the sea-creature avatar theme so a handle and its default avatar
+// feel like the same character. These same lists will later power the
+// user-facing suggestion picker (the "type your own" slice adds the
+// uniqueness UI + blocklist on top of this).
 const ADJECTIVES = [
   'Rejected', 'Ghosted', 'Sunken', 'Drifting', 'Overqualified', 'Underpaid',
   'Benched', 'Pending', 'Shortlisted', 'Rescinded', 'Jaded', 'Weary',
-  'Hopeful', 'Anonymous', 'Restless', 'Adrift',
+  'Hopeful', 'Anonymous', 'Restless', 'Adrift', 'Drowning', 'Burntout',
+  'Lowballed', 'Micromanaged', 'Downsized', 'Furloughed', 'Blindsided',
+  'Waitlisted', 'Autorejected', 'Unhired', 'Overworked', 'Deprioritized',
+  'Buffering', 'Circleback', 'Deadlined', 'Screened', 'Passedover', 'Unpaid',
 ];
 const NOUNS = [
-  'Raccoon', 'Gopher', 'Sailor', 'Walrus', 'Penguin', 'Otter', 'Herring',
-  'Squid', 'Barnacle', 'Kraken', 'Narwhal', 'Manatee', 'Anchovy', 'Lobster',
-  'Seagull', 'Mackerel',
+  'Guppy', 'Blobfish', 'Anglerfish', 'Pufferfish', 'Squid', 'Kraken',
+  'Narwhal', 'Barnacle', 'Anchovy', 'Herring', 'Mackerel', 'Lobster',
+  'Manatee', 'Walrus', 'Seagull', 'Otter', 'Jellyfish', 'Crab', 'Urchin',
+  'Nautilus', 'Coelacanth', 'Trilobite', 'Minnow', 'Sardine', 'Flounder',
+  'Eel', 'Haddock', 'Prawn', 'Clam', 'Plankton', 'Tadpole', 'Mollusk',
+  'Raccoon', 'Gopher',
 ];
 
 function pick<T>(list: readonly T[]): T {
@@ -74,8 +90,11 @@ export async function findOrCreateUser(
   // Try a few times in case a randomly-generated handle collides.
   for (let attempt = 0; attempt < 10; attempt++) {
     try {
+      // Derive the default avatar from the SAME handle, so the handle and its
+      // creature feel like one character (e.g. "Drowning_Guppy" → its fish).
+      const handle = generateHandleCandidate();
       return await prisma.user.create({
-        data: { supabaseUserId, handle: generateHandleCandidate() },
+        data: { supabaseUserId, handle, avatarId: defaultAvatarForHandle(handle) },
         select: publicUserSelect,
       });
     } catch (error) {
@@ -102,6 +121,25 @@ export async function getUserByHandle(
 ): Promise<PublicUser | null> {
   return prisma.user.findUnique({
     where: { handle },
+    select: publicUserSelect,
+  });
+}
+
+/**
+ * Change the caller's avatar. `avatarId` is validated here too (never trust the
+ * client) even though the route also validates it — defence in depth. Returns
+ * the updated public user.
+ */
+export async function updateMyAvatar(
+  userId: string,
+  avatarId: string,
+): Promise<PublicUser> {
+  if (!isValidAvatarId(avatarId)) {
+    throw new Error(`Unknown avatarId: ${avatarId}`);
+  }
+  return prisma.user.update({
+    where: { id: userId },
+    data: { avatarId: avatarId satisfies AvatarId },
     select: publicUserSelect,
   });
 }
