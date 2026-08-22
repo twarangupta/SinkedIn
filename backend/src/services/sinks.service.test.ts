@@ -15,6 +15,8 @@ let pollId: string; // requiresPoll
 
 beforeEach(async () => {
   // Order matters for FKs: clear children before parents.
+  await prisma.commentVote.deleteMany();
+  await prisma.comment.deleteMany();
   await prisma.pollOption.deleteMany();
   await prisma.sink.deleteMany();
   await prisma.user.deleteMany();
@@ -54,11 +56,75 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  await prisma.commentVote.deleteMany();
+  await prisma.comment.deleteMany();
   await prisma.pollOption.deleteMany();
   await prisma.sink.deleteMany();
   await prisma.user.deleteMany();
   await prisma.category.deleteMany();
   await prisma.$disconnect();
+});
+
+describe('getFeed — top comment preview', () => {
+  it('previews the highest-scored top-level comment', async () => {
+    const sink = await createSink(userId, {
+      categoryId: discussionId,
+      title: 'has comments',
+    });
+    await prisma.comment.create({
+      data: { sinkId: sink.id, userId, body: 'low' },
+    });
+    await prisma.comment.create({
+      data: { sinkId: sink.id, userId, body: 'high', score: 3 },
+    });
+    const { sinks } = await getFeed({});
+    const found = sinks.find((s) => s.id === sink.id)!;
+    expect(found.topComment?.body).toBe('high');
+    expect(found.topComment?.score).toBe(3);
+  });
+
+  it('shows the NEWEST comment when none are voted (score 0)', async () => {
+    const sink = await createSink(userId, {
+      categoryId: discussionId,
+      title: 'unvoted',
+    });
+    await prisma.comment.create({
+      data: { sinkId: sink.id, userId, body: 'first' },
+    });
+    await new Promise((r) => setTimeout(r, 5));
+    await prisma.comment.create({
+      data: { sinkId: sink.id, userId, body: 'newest' },
+    });
+    const { sinks } = await getFeed({});
+    const found = sinks.find((s) => s.id === sink.id)!;
+    expect(found.topComment?.body).toBe('newest');
+  });
+
+  it('ignores replies — only top-level comments preview', async () => {
+    const sink = await createSink(userId, {
+      categoryId: discussionId,
+      title: 'threaded',
+    });
+    const top = await prisma.comment.create({
+      data: { sinkId: sink.id, userId, body: 'top-level' },
+    });
+    await prisma.comment.create({
+      data: { sinkId: sink.id, userId, body: 'a reply', parentId: top.id, score: 99 },
+    });
+    const { sinks } = await getFeed({});
+    const found = sinks.find((s) => s.id === sink.id)!;
+    expect(found.topComment?.body).toBe('top-level');
+  });
+
+  it('topComment is null when a Sink has no comments', async () => {
+    const sink = await createSink(userId, {
+      categoryId: discussionId,
+      title: 'silent',
+    });
+    const { sinks } = await getFeed({});
+    const found = sinks.find((s) => s.id === sink.id)!;
+    expect(found.topComment).toBeNull();
+  });
 });
 
 describe('createSink', () => {
