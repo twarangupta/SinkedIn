@@ -124,8 +124,9 @@ export async function stepVote(
 export async function getMyVoteState(userId: string): Promise<{
   votes: { sinkId: string; value: VoteValue }[];
   pollVotes: { sinkId: string; pollOptionId: string }[];
+  commentVotes: { commentId: string; value: VoteValue }[];
 }> {
-  const [votes, pollVotes] = await Promise.all([
+  const [votes, pollVotes, commentVotes] = await Promise.all([
     prisma.vote.findMany({
       where: { userId },
       select: { sinkId: true, value: true },
@@ -134,6 +135,10 @@ export async function getMyVoteState(userId: string): Promise<{
       where: { userId },
       select: { pollOptionId: true, option: { select: { sinkId: true } } },
     }),
+    prisma.commentVote.findMany({
+      where: { userId },
+      select: { commentId: true, value: true },
+    }),
   ]);
   return {
     votes,
@@ -141,6 +146,7 @@ export async function getMyVoteState(userId: string): Promise<{
       sinkId: pv.option.sinkId,
       pollOptionId: pv.pollOptionId,
     })),
+    commentVotes,
   };
 }
 
