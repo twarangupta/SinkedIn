@@ -16,7 +16,7 @@ const commentPublicSelect = {
   body: true,
   parentId: true,
   createdAt: true,
-  user: { select: { id: true, handle: true } },
+  user: { select: { id: true, handle: true, avatarId: true } },
 } satisfies Prisma.CommentSelect;
 
 /**
