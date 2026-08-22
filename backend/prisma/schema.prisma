@@ -26,6 +26,7 @@ model User {
   id             String     @id @default(uuid())
   supabaseUserId String     @unique // Supabase Auth user id, never exposed publicly
   handle         String     @unique // e.g. "Rejected_Raccoon_402" — public-facing
+  avatarId       String     @default("pufferfish") // ocean-creature avatar id (see lib/avatars.ts); public, no PII. Set deterministically from handle on signup, user-changeable.
   createdAt      DateTime   @default(now())
   sinks          Sink[]
   votes          Vote[]
