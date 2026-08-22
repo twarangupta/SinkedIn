@@ -75,3 +75,18 @@
 ::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-ink-3);
 }
+
+/*
+ * Clickable affordance: native <button> defaults to the arrow cursor (only <a>
+ * gets the pointer), which makes buttons feel non-clickable. Give every enabled
+ * button / role=button the hand pointer, like a link; disabled ones show
+ * not-allowed.
+ */
+button:not(:disabled),
+[role='button'],
+summary {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}

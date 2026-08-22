@@ -47,7 +47,7 @@ export default async function SinkPage({
         <Link href="/" className="text-sm text-ink-3 hover:text-ink">
           ← Back to feed
         </Link>
-        <SinkCard sink={sink} />
+        <SinkCard sink={sink} expandable={false} />
         <CommentSection sinkId={sink.id} comments={comments} />
       </div>
     </div>

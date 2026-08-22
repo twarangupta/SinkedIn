@@ -21,14 +21,24 @@ import { apiFetch } from '../lib/api';
 
 type Vote = 'BUOY' | 'ANCHOR' | null;
 
+/**
+ * Works for both Sinks and Comments — the vote model is identical (Buoy/Anchor,
+ * server-clamped stepper). `kind` picks the endpoint and which hydration map to
+ * read; `size="sm"` renders the compact variant used on comments and the feed's
+ * top-comment preview, so those icons stay small and consistent.
+ */
 export function VoteControl({
-  sinkId,
+  kind = 'sink',
+  id,
   score,
   myVote,
+  size = 'md',
 }: {
-  sinkId: string;
+  kind?: 'sink' | 'comment';
+  id: string;
   score: number;
   myVote: Vote;
+  size?: 'sm' | 'md';
 }) {
   const { session } = useAuth();
   const { open } = useAuthModal();
@@ -37,13 +47,18 @@ export function VoteControl({
   const [count, setCount] = useState(score);
   const [busy, setBusy] = useState(false);
 
+  const hydrationMap =
+    kind === 'sink' ? myVotes.voteBySink : myVotes.voteByComment;
+  const endpoint =
+    kind === 'sink' ? `/api/v1/sinks/${id}/vote` : `/api/v1/comments/${id}/vote`;
+
   // Restore the caller's own highlight once their votes load (SSR sent null).
   // Runs only when the map loads/changes — not after a click — so it never
   // clobbers an in-progress vote. The count is untouched (already correct).
   useEffect(() => {
     if (!myVotes.loaded) return;
-    setCurrent(myVotes.voteBySink.get(sinkId) ?? null);
-  }, [myVotes.loaded, myVotes.voteBySink, sinkId]);
+    setCurrent(hydrationMap.get(id) ?? null);
+  }, [myVotes.loaded, hydrationMap, id]);
 
   const vote = async (direction: 'UP' | 'DOWN') => {
     if (!session) {
@@ -77,10 +92,10 @@ export function VoteControl({
     setBusy(true);
 
     try {
-      const result = await apiFetch<{ score: number; myVote: Vote }>(
-        `/api/v1/sinks/${sinkId}/vote`,
-        { method: 'POST', body: JSON.stringify({ direction }) },
-      );
+      const result = await apiFetch<{ score: number; myVote: Vote }>(endpoint, {
+        method: 'POST',
+        body: JSON.stringify({ direction }),
+      });
       // Server truth — clamped, so at most a 1-point move.
       setCount(result.score);
       setCurrent(result.myVote);
@@ -92,8 +107,10 @@ export function VoteControl({
     }
   };
 
+  const boxCls = size === 'sm' ? 'gap-1 text-xs' : 'gap-2';
+
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-line px-2 py-1">
+    <div className={`inline-flex items-center ${boxCls}`}>
       <button
         onClick={() => vote('UP')}
         aria-label="Buoy (upvote)"

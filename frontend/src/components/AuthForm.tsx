@@ -42,7 +42,7 @@ export function AuthForm({ onSuccess }: { onSuccess?: () => void }) {
         <p className="mt-1 text-sm text-ink-3">
           {mode === 'signin'
             ? 'Sign in to post, vote, and comment.'
-            : "No real names — you'll get an anonymous handle."}
+            : "No real names. You'll get an anonymous handle."}
         </p>
       </div>
 

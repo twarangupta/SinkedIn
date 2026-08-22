@@ -4,15 +4,17 @@
  */
 
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import Script from 'next/script';
 import { Providers } from '../components/Providers';
 import { Analytics } from '../components/Analytics';
+import { TopLoader } from '../components/TopLoader';
 import './globals.css';
 
 export const metadata: Metadata = {
   title: 'SinkedIn',
   description:
-    'The honest, darkly-funny side of work and the job market. Bad bosses, burnout, rejections, wins — posted anonymously.',
+    'The honest, darkly-funny side of work and the job market. Bad bosses, burnout, rejections, wins, posted anonymously.',
   openGraph: {
     title: 'SinkedIn',
     description:
@@ -41,6 +43,9 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <Suspense fallback={null}>
+          <TopLoader />
+        </Suspense>
         <Providers>{children}</Providers>
         <Analytics />
 

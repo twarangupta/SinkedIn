@@ -7,11 +7,11 @@
  */
 
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getUserProfileServer, getUserSinksServer } from '@/lib/server-api';
 import { Header } from '@/components/layout/Header';
 import { Avatar } from '@/components/avatar/Avatar';
+import { PageHeader } from '@/components/PageHeader';
 import { SinkCard } from '@/components/SinkCard';
 
 export async function generateMetadata({
@@ -22,7 +22,7 @@ export async function generateMetadata({
   const user = await getUserProfileServer(params.handle);
   if (!user) return { title: 'Profile not found · SinkedIn' };
   const title = `${user.handle} · SinkedIn`;
-  const description = `${user.handle}'s Sinks on SinkedIn — The real side of the job market.`;
+  const description = `${user.handle}'s Sinks on SinkedIn. The real side of the job market.`;
   return { title, description, openGraph: { title, description, type: 'profile' } };
 }
 
@@ -46,14 +46,12 @@ export default async function ProfilePage({
     <div className="min-h-screen">
       <Header />
       <div className="mx-auto max-w-2xl space-y-4 px-6 py-6">
-        <Link href="/" className="text-sm text-ink-3 hover:text-ink">
-          ← Back to feed
-        </Link>
+        <PageHeader title="Profile" />
 
         <header className="flex items-center gap-4 rounded-xl border border-line bg-surface p-5">
           <Avatar avatarId={user.avatarId} handle={user.handle} size={56} />
           <div className="min-w-0">
-            <h1 className="truncate font-display text-xl font-medium">{user.handle}</h1>
+            <div className="truncate font-display text-xl font-medium">{user.handle}</div>
             <div className="text-sm text-ink-3">
               Joined {joinedLabel(user.createdAt)} · {sinks.length}{' '}
               {sinks.length === 1 ? 'Sink' : 'Sinks'}

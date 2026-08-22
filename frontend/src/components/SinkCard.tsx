@@ -11,10 +11,19 @@ import { CategoryPill } from './CategoryPill';
 import { VoteControl } from './VoteControl';
 import { PollBlock } from './PollBlock';
 import { Avatar } from './avatar/Avatar';
+import { ExpandableText } from './ExpandableText';
+import { SinkComments } from './SinkComments';
 import { timeAgo } from '../lib/format';
 import type { Sink } from '../types';
 
-export function SinkCard({ sink }: { sink: Sink }) {
+export function SinkCard({
+  sink,
+  expandable = true,
+}: {
+  sink: Sink;
+  /** Feed cards truncate long bodies; the single-Sink page passes false. */
+  expandable?: boolean;
+}) {
   return (
     <article className="rounded-xl border border-line bg-surface p-5">
       <header className="mb-3 flex items-center gap-3">
@@ -48,9 +57,12 @@ export function SinkCard({ sink }: { sink: Sink }) {
           {sink.conclusion ? ` · ${sink.conclusion.toLowerCase()}` : ''}
         </div>
       )}
-      {sink.body && (
-        <p className="mb-3 whitespace-pre-wrap text-sm text-ink-2">{sink.body}</p>
-      )}
+      {sink.body &&
+        (expandable ? (
+          <ExpandableText text={sink.body} />
+        ) : (
+          <p className="mb-3 whitespace-pre-wrap text-sm text-ink-2">{sink.body}</p>
+        ))}
       {sink.pollOptions.length > 0 && (
         <PollBlock
           sinkId={sink.id}
@@ -60,11 +72,18 @@ export function SinkCard({ sink }: { sink: Sink }) {
       )}
 
       <footer className="mt-2 flex items-center gap-4 text-sm text-ink-3">
-        <VoteControl sinkId={sink.id} score={sink.score} myVote={sink.myVote} />
-        <Link href={`/s/${sink.id}`} className="hover:text-ink">
-          {sink._count.comments} comments
-        </Link>
+        <VoteControl kind="sink" id={sink.id} score={sink.score} myVote={sink.myVote} />
       </footer>
+
+      {/* Feed only: read, vote, reply, and add comments inline (no navigation).
+          The detail page has its own full thread below the Sink. */}
+      {expandable && (
+        <SinkComments
+          sinkId={sink.id}
+          commentCount={sink._count.comments}
+          topComment={sink.topComment}
+        />
+      )}
     </article>
   );
 }

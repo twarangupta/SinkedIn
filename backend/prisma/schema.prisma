@@ -31,6 +31,7 @@ model User {
   sinks          Sink[]
   votes          Vote[]
   comments       Comment[]
+  commentVotes   CommentVote[]
   pollVotes      PollVote[]
 }
 
@@ -143,8 +144,25 @@ model Comment {
   parentId  String? // null = top-level; set = reply (threading)
   parent    Comment?  @relation("Thread", fields: [parentId], references: [id])
   replies   Comment[] @relation("Thread")
+  score     Int       @default(0) // cached buoy score (buoys - anchors), for ranking the top comment
+  votes     CommentVote[]
   deletedAt DateTime?
   createdAt DateTime  @default(now())
 
   @@index([sinkId])
+  @@index([score])
+}
+
+// Buoy/Anchor voting on a Comment — a direct mirror of Vote (on Sinks).
+// One vote per user per Comment; score cached on the Comment (buoys - anchors).
+model CommentVote {
+  id        String    @id @default(uuid())
+  commentId String
+  comment   Comment   @relation(fields: [commentId], references: [id])
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  value     VoteValue
+  createdAt DateTime  @default(now())
+
+  @@unique([commentId, userId]) // one vote per user per Comment
 }

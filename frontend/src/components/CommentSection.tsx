@@ -17,6 +17,7 @@ import { useAuthModal } from '../lib/authModal';
 import { apiFetch } from '../lib/api';
 import { timeAgo } from '../lib/format';
 import { Avatar } from './avatar/Avatar';
+import { VoteControl } from './VoteControl';
 import { Button } from './ui/Button';
 import type { Comment } from '../types';
 
@@ -43,12 +44,14 @@ function Composer({
   placeholder,
   onDone,
   onAdded,
+  autoFocus = false,
 }: {
   sinkId: string;
   parentId?: string;
   placeholder: string;
   onDone?: () => void;
   onAdded: (comment: Comment) => void;
+  autoFocus?: boolean;
 }) {
   const { session } = useAuth();
   const { open } = useAuthModal();
@@ -72,7 +75,7 @@ function Composer({
       >
         {parentId
           ? 'Sign in to reply…'
-          : 'Add a comment — sign in to join the conversation…'}
+          : 'Add a comment. Sign in to join the conversation…'}
       </button>
     );
   }
@@ -108,6 +111,7 @@ function Composer({
     >
       <textarea
         ref={taRef}
+        autoFocus={autoFocus}
         rows={1}
         placeholder={placeholder}
         value={body}
@@ -157,12 +161,21 @@ function CommentItem({
           <p className="mt-0.5 whitespace-pre-wrap text-sm leading-relaxed text-ink">
             {node.body}
           </p>
-          <button
-            onClick={() => setReplying((v) => !v)}
-            className="mt-1 text-xs font-medium text-ink-3 hover:text-primary"
-          >
-            {replying ? 'Cancel' : 'Reply'}
-          </button>
+          <div className="mt-1.5 flex items-center gap-3">
+            <VoteControl
+              kind="comment"
+              id={node.id}
+              score={node.score}
+              myVote={null}
+              size="sm"
+            />
+            <button
+              onClick={() => setReplying((v) => !v)}
+              className="text-xs font-medium text-ink-3 hover:text-primary"
+            >
+              {replying ? 'Cancel' : 'Reply'}
+            </button>
+          </div>
           {replying && (
             <div className="mt-2">
               <Composer
@@ -195,9 +208,15 @@ function CommentItem({
 export function CommentSection({
   sinkId,
   comments: initialComments,
+  flat = false,
+  autoFocusCompose = false,
 }: {
   sinkId: string;
   comments: Comment[];
+  /** Inline-in-feed variant: drop the card chrome, separate with a top rule. */
+  flat?: boolean;
+  /** Focus the top-level composer on mount (used by the feed "Reply" button). */
+  autoFocusCompose?: boolean;
 }) {
   const [comments, setComments] = useState(initialComments);
 
@@ -214,11 +233,22 @@ export function CommentSection({
 
   const tree = buildTree(comments);
   return (
-    <section className="space-y-4 rounded-xl border border-line bg-surface p-5">
+    <section
+      className={
+        flat
+          ? 'space-y-4 border-t border-line pt-4'
+          : 'space-y-4 rounded-xl border border-line bg-surface p-5'
+      }
+    >
       <h2 className="text-base font-semibold text-ink">
         {comments.length} {comments.length === 1 ? 'Comment' : 'Comments'}
       </h2>
-      <Composer sinkId={sinkId} placeholder="Share your take…" onAdded={addComment} />
+      <Composer
+        sinkId={sinkId}
+        placeholder="Share your take…"
+        onAdded={addComment}
+        autoFocus={autoFocusCompose}
+      />
       {tree.length > 0 ? (
         <div className="divide-y divide-line border-t border-line">
           {tree.map((node) => (

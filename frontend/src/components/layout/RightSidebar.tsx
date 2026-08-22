@@ -24,7 +24,7 @@ export function RightSidebar({ categories }: { categories: Category[] }) {
           </ul>
         </div>
         <p className="px-2 text-xs leading-relaxed text-ink-3">
-          Pseudonymity is permanent. Your handle is anonymous — no real names, no
+          Pseudonymity is permanent. Your handle is anonymous. No real names, no
           company emails.
         </p>
       </div>

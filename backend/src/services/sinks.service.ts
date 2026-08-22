@@ -47,6 +47,21 @@ const sinkPublicSelect = {
     orderBy: { position: 'asc' },
   },
   _count: { select: { comments: true, votes: true } },
+  // The single "top comment" to preview on the feed card: highest-scored
+  // top-level (non-reply) comment, ties broken by newest — so an unvoted Sink
+  // still shows its newest comment rather than an empty slot.
+  comments: {
+    where: { deletedAt: null, parentId: null },
+    orderBy: [{ score: 'desc' }, { createdAt: 'desc' }],
+    take: 1,
+    select: {
+      id: true,
+      body: true,
+      score: true,
+      createdAt: true,
+      user: { select: { id: true, handle: true, avatarId: true } },
+    },
+  },
 } satisfies Prisma.SinkSelect;
 
 /**
@@ -105,8 +120,10 @@ export async function createSink(userId: string, input: CreateSinkInput) {
 }
 
 type SinkRow = Prisma.SinkGetPayload<{ select: typeof sinkPublicSelect }>;
+type TopComment = SinkRow['comments'][number];
 
-type SinkWithMyState = SinkRow & {
+type SinkWithMyState = Omit<SinkRow, 'comments'> & {
+  topComment: TopComment | null;
   myVote: VoteValue | null;
   myPollVote: string | null;
 };
@@ -122,7 +139,12 @@ async function attachMyState(
   userId?: string,
 ): Promise<SinkWithMyState[]> {
   if (!userId || sinks.length === 0) {
-    return sinks.map((s) => ({ ...s, myVote: null, myPollVote: null }));
+    return sinks.map(({ comments, ...s }) => ({
+      ...s,
+      topComment: comments[0] ?? null,
+      myVote: null,
+      myPollVote: null,
+    }));
   }
 
   // Buoy/Anchor votes, keyed by sink id.
@@ -150,8 +172,9 @@ async function attachMyState(
     }
   }
 
-  return sinks.map((s) => ({
+  return sinks.map(({ comments, ...s }) => ({
     ...s,
+    topComment: comments[0] ?? null,
     myVote: voteBySink.get(s.id) ?? null,
     myPollVote: pollVoteBySink.get(s.id) ?? null,
   }));

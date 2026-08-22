@@ -11,6 +11,7 @@
 import type { ReactNode } from 'react';
 import { AuthProvider } from '../lib/auth';
 import { AuthModalProvider } from '../lib/authModal';
+import { MeProvider } from '../lib/me';
 import { MyVotesProvider } from '../lib/myVotes';
 import { AuthModal } from './AuthModal';
 
@@ -18,10 +19,12 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <AuthProvider>
       <AuthModalProvider>
-        <MyVotesProvider>
-          {children}
-          <AuthModal />
-        </MyVotesProvider>
+        <MeProvider>
+          <MyVotesProvider>
+            {children}
+            <AuthModal />
+          </MyVotesProvider>
+        </MeProvider>
       </AuthModalProvider>
     </AuthProvider>
   );
