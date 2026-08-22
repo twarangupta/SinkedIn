@@ -2,33 +2,21 @@
 
 /**
  * Top header bar — wordmark (links home), search (stub), and the auth area.
- * Fetches the current user's handle itself, so any page can just render <Header/>.
+ * Reads the current user from the shared MeProvider (fetched once app-wide).
  */
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../../lib/auth';
 import { useAuthModal } from '../../lib/authModal';
-import { apiFetch } from '../../lib/api';
+import { useMe } from '../../lib/me';
 import { Button } from '../ui/Button';
 import { BoatMark } from '../BoatMark';
-import { Avatar } from '../avatar/Avatar';
-import type { PublicUser } from '../../types';
+import { ProfileMenu } from '../ProfileMenu';
 
 export function Header() {
   const { session, signOut } = useAuth();
   const { open } = useAuthModal();
-  const [me, setMe] = useState<PublicUser>();
-
-  useEffect(() => {
-    if (!session) {
-      setMe(undefined);
-      return;
-    }
-    apiFetch<{ user: PublicUser }>('/api/v1/users/me')
-      .then((res) => setMe(res.user))
-      .catch(() => undefined);
-  }, [session]);
+  const { me } = useMe();
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface">
@@ -46,42 +34,28 @@ export function Header() {
         </Link>
         <input
           placeholder="Search Sinks, categories, people…"
-          className="hidden h-10 min-w-0 flex-1 rounded-lg border border-line bg-elevated px-3 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-primary md:block"
+          className="hidden h-10 min-w-0 max-w-2xl flex-1 rounded-lg border border-line bg-elevated px-3 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-primary md:block"
         />
-        <nav className="flex shrink-0 items-center justify-end gap-1">
+        <nav className="ml-auto flex shrink-0 items-center justify-end gap-1">
           {session ? (
             <>
               {me ? (
-                <Link
-                  href={`/u/${me.handle}`}
-                  className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-ink-2 transition-colors hover:bg-elevated hover:text-ink"
-                  title="Your profile"
-                >
-                  <Avatar avatarId={me.avatarId} handle={me.handle} size={28} />
-                  <span className="hidden max-w-[12rem] truncate sm:inline">
-                    {me.handle}
-                  </span>
-                </Link>
+                <ProfileMenu me={me} />
               ) : (
                 <span className="px-2 text-sm text-ink-3">…</span>
               )}
-              <Link
-                href="/settings"
-                className="hidden h-9 items-center rounded-lg px-3 text-sm font-medium text-ink-2 transition-colors hover:bg-elevated hover:text-ink sm:inline-flex"
-                title="Settings"
-              >
-                Settings
-              </Link>
               <Button
                 variant="ghost"
                 onClick={signOut}
-                className="whitespace-nowrap"
+                className="!h-9 whitespace-nowrap"
               >
                 Sign out
               </Button>
             </>
           ) : (
-            <Button onClick={open}>Sign in</Button>
+            <Button onClick={open} className="!h-9">
+              Sign in
+            </Button>
           )}
         </nav>
       </div>
