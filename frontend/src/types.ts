@@ -30,6 +30,16 @@ export interface Comment {
   id: string;
   body: string;
   parentId: string | null;
+  score: number;
+  createdAt: string;
+  user: PublicUser;
+}
+
+/** The single top comment previewed on a Sink card in the feed. */
+export interface TopComment {
+  id: string;
+  body: string;
+  score: number;
   createdAt: string;
   user: PublicUser;
 }
@@ -52,6 +62,8 @@ export interface Sink {
   createdAt: string;
   category: { id: string; name: string; slug: string; color: string };
   user: PublicUser;
+  /** The highest-scored top-level comment, previewed in the feed (null if none). */
+  topComment: TopComment | null;
   pollOptions: PollOption[];
   _count: { comments: number; votes: number };
   /** The current user's vote on this Sink (null if not voted / anonymous). */
