@@ -49,7 +49,7 @@ export function AuthForm({ onSuccess }: { onSuccess?: () => void }) {
       <form onSubmit={onSubmit} className="space-y-3">
         <Input
           type="email"
-          placeholder="name@company.com"
+          placeholder="you@email.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
