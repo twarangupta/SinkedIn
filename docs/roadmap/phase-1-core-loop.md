@@ -135,6 +135,15 @@ One-tap, category-specific reactions beyond voting — Rant → "Been there" / "
 ## The critical non-code activity — seeding
 Seed **30–50 real, relatable Sinks** across a few categories (yours, friends' with permission, curated-public with attribution) **before** showing anyone. An empty feed feels dead; a seeded one feels alive — **load-bearing for the whole test.** Demo/synthetic data stays clearly marked + removable and never masquerades as real on the indexed product.
 
+## 🔧 Build notes — services & decisions (brief)
+*A build log for future-you: per service, what we built, the key decision, and why.*
+- **Category-first composer** — config flags on `Category` decide which fields appear. **Decision:** Zod at the route, **category-conditional rules in the service** (require/strip by flag). **Why:** categories are data, not code — adding one is a data change, no deploy.
+- **Clamped vote stepper** (`stepVote`) — client sends only a **direction**; the server clamps to `[-1, +1]`, one step per click. **Decision:** enforce the invariant **server-side.** **Why:** stale client state can never swing a score by 2 — the server owns the truth.
+- **Feed** — SSR server components + **cursor pagination** on `createdAt`. **Decision:** cursor (not offset) + server-render. **Why:** stable when new Sinks arrive mid-scroll; SEO-indexable HTML + share previews.
+- **Comments & polls** — threaded via `parentId`; **optimistic append** from the server's response. **Decision:** one round-trip, no full-page re-pull. **Why:** snappy, no flash; poll enforces one-vote-per-poll in the service.
+- **Reactions** — `Reaction` table + per-category config, **separate from `score`**, counts not lists. **Decision:** config-driven, one per user per Sink. **Why:** cheap, ranking stays legible, adding reactions is a data change.
+- **Identity (handles + avatars)** — auto-assigned `Adjective_Noun_Number` handle; data-driven `avatarId` with a **deterministic default by handle-hash** and a swappable id→art catalog. **Decision:** art is a placeholder to replace later; the id list/defaults/picker stay. **Why:** identity delight without coupling to app code. *(Handle **picker** — suggestions/uniqueness/blocklist — still pending.)*
+
 ## Tradeoffs & decisions
 - **Reactions vs. clutter:** keep them counts, not lists; distinct from votes so the ranking signal stays legible.
 - **Moderation depth:** manual review is fine now — but ship report/hide + rate limits as cheap day-one insurance (a public post-anything community *will* attract abuse).

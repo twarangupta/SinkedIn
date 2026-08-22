@@ -55,6 +55,8 @@ sequenceDiagram
 
 Trust + a status layer in one; makes interview intel and company mentions carry more weight (and, if the [Ghost Index fork](phase-3-depth-and-growth.md) was taken, weights that data credibly). **Never require verification to post.**
 
+This weighting is also the **anti-poisoning defense** for the [aggregate scorecards](phase-3-depth-and-growth.md): a *verified* report counts for far more than an anonymous one, so trying to game a company's ghost rate with fake reports gets diluted out.
+
 ---
 
 ## Auras (reputation) `[in-plan]`
@@ -65,6 +67,18 @@ Puddle → … → **Mariana Trench**, as light identity earned by contribution 
 
 ## Resilience streak `[new · retention #5 — the safe gamification]`
 Reward *showing up* through the grind — "12 days still swimming", survival milestones — as light identity. Pairs with ranks + Auras. Gives a habit/identity reason to return **without ever rewarding failure itself.**
+
+The streak counts **showing up** — opening the app, logging a tracked application, helping someone — **never rejections.** The [Phase-2 tracker](phase-2-retention.md)'s applied-cadence is a natural, honest input: the number is "days you kept swimming," not "rejections collected."
+
+---
+
+## 🔧 Build notes — services & decisions (brief)
+*A build log for future-you: per service, what we build, the key decision, and why.*
+- **Verification service (TS)** — email forward / `.eml` upload → **strip PII on ingest** → store only `{ domain, date }`. **Decision:** honor-system Tier 1 first, real **DKIM** Tier 2 later. **Why:** low friction to launch, cryptographic trust when it matters; never gate posting on it.
+- **Auras ledger** — append-only `AuraEvent`, weighted by `kind`. **Decision:** derive from existing signals (buoys on helpful content, accepted advice) + explicit events; **no "rejection" kind exists.** **Why:** reward helping/persistence, hard to fake, structurally impossible to gamify failure.
+- **Rank tiers** — computed from Aura + streak (Puddle → Mariana Trench). **Decision:** **derived / materialized**, not a source of truth. **Why:** cheap, recomputable, no drift.
+- **Resilience streak** — `RankState.streakDays` from "showing-up" events. **Decision:** input = activity/tracker cadence, **never** rejection count. **Why:** the hard rule.
+- **Anti-gaming** — rate caps, self-vote exclusion, sockpuppet heuristics, verification-weighting of aggregates. **Decision:** build *alongside* the reward system, not after. **Why:** if gamification is gameable, people optimize for points over honesty.
 
 ---
 

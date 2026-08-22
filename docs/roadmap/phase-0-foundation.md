@@ -50,5 +50,14 @@ graph LR
 ## What the user can do
 Almost nothing — sign up, log in, get an anonymous handle, see an empty shell. **This is correct.** Phase 0 is a promise to *you* (the plumbing works), not to the user.
 
+## 🔧 Build notes — services & decisions (brief)
+*A build log for future-you: what we built here, the key decision, and why.*
+- **Layering** (`routes → controllers → services → prisma`) — established at the first endpoint. **Decision:** Prisma *only* in services; controllers are HTTP-only. **Why:** later failures are feature bugs, not tangled-layer bugs; the service layer is the unit-tested seam.
+- **Local JWT verification** — backend checks the Supabase JWT signature itself (HS256 legacy secret or JWKS). **Decision:** verify locally instead of calling `auth.getUser()` per request. **Why:** removed a ~1–2s network round-trip from every authenticated action.
+- **Deploy-early** — all three providers live with an empty app. **Decision:** ship the skeleton before any feature. **Why:** surfaces env/CORS/build/connection-string problems while the app is trivial.
+- **Keep-warm cron** — pings Render `/health` on a schedule. **Decision:** a cron ping instead of a paid tier. **Why:** kills free-tier cold starts cheaply.
+- **Prisma schema = ground truth** — typed client generated from `schema.prisma`. **Decision:** the schema is the single source of truth for every data shape. **Why:** typed DB access is the anti-hallucination guardrail (read it before touching data).
+- **Migrations in CI** — `prisma migrate deploy` runs against the throwaway test DB in CI, and (via a `migrate-prod` workflow that fires on merges to `main` touching `prisma/migrations/**`) against **prod**. **Decision:** never let the app deploy silently change schema; migrations are their own gated step. **Why:** merging new code that reads a not-yet-migrated column 500s prod — learned the hard way; the app deploy (Render) ships code, so migrations need their own path.
+
 ## Exit gate (met)
 A live URL round-trips frontend → backend → database → back; schema migrated in all environments; `CLAUDE.md`, git hygiene, and env-var handling in place. Nothing user-facing works yet — and that's the right outcome.

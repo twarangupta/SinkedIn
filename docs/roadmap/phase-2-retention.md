@@ -7,7 +7,7 @@
 > **Entry gate:** Phase 1 loop **proven satisfying** (the qualitative gate passed with real users).
 
 ## What the user can newly do
-Track their own hunt privately — logging every application **with the exact resume they used** — and watch their funnel / response rate / ghost rate · post a **Comeback** when they land a job · get a weekly **digest** email · feel **"not alone"** and watch a ghost timer · get **notified** when people engage · export or delete their data.
+Track their own hunt privately — logging every application **with the exact resume they used** — and watch their funnel / response rate / ghost rate · see **personal insights** (which resume gets replies, which source responds fastest, an "already applied here" warning) · optionally **save jobs straight from the browser** with a companion extension · post a **Comeback** when they land a job · get a weekly **digest** email · feel **"not alone"** and watch a ghost timer · get **notified** when people engage · export or delete their data.
 
 > **Felt experience:** "I'm actually managing my search here — logging every application, watching my response rate — and when I finally got the offer, posting the Comeback was the most satisfying thing I've done online all year."
 
@@ -51,11 +51,13 @@ erDiagram
     Application ||--o| ResumeFile : "attaches (Storage)"
     Application ||--o| Sink : "one-way bridge (optional)"
 
-    Application { string id PK; string userId FK; string company "free text"; string role; enum status "APPLIED|RESPONDED|INTERVIEW|OUTCOME"; datetime appliedAt; datetime respondedAt; string outcome; string resumeFileKey; string coverLetterFileKey; datetime deletedAt }
+    Application { string id PK; string userId FK; string company "free text"; string role; enum status "APPLIED|RESPONDED|INTERVIEW|OUTCOME"; datetime appliedAt; datetime respondedAt; string outcome; string resumeFileKey; string coverLetterFileKey; string source "manual|greenhouse|lever|indeed|linkedin|…"; string sourceUrl; string sourceJobId; string dedupeKey "norm(company+title+location)"; datetime deletedAt }
     Notification { string id PK; string userId FK; enum type "REPLY|BUOY|REACTION|POLL_RESULT"; string actorHandle; string sinkId; datetime readAt; datetime createdAt }
     EmailPrefs { string userId PK; bool weeklyDigest; datetime unsubscribedAt }
 ```
-Plus a private Supabase Storage bucket for `ResumeFile`/cover-letter blobs, and an analytics event store (separate table or provider).
+Plus a private Supabase Storage bucket for `ResumeFile`/cover-letter blobs, and an analytics event store (separate table or provider). The `source` / `sourceUrl` / `sourceJobId` / `dedupeKey` fields are populated by **manual entry _or_ the companion extension** — the extension is just another writer into the *same* private model, never a second store.
+
+> **Notifications recap:** the `Notification` model above powers in-app alerts on **replies, buoys, reactions, and resolved polls** — the mechanical return-driver detailed under *In-app notifications* below. Full personalization (follow-based alerts, per-type prefs, thread digests) is [Phase 3](phase-3-depth-and-growth.md).
 
 ---
 
@@ -109,6 +111,52 @@ Settings: change email, **export my data**, **delete account** (soft-delete publ
 ### Analytics / instrumentation `[new · required for the exit gate]`
 You cannot pass "people come back across weeks" without measuring it: lightweight, privacy-respecting event tracking (returns, cohort retention, funnel). On-brand "no creepy tracking."
 
+### Personal insights — analytics on your OWN data `[new]`
+The tracker isn't just a list, it's a **private dashboard**. Every insight here is derived from the user's *own* rows — **no aggregation, no cross-user data, so zero privacy/legal risk.** This is the safe 80% of the value; ship it before any community aggregate.
+- **Funnel + rates:** response rate, ghost rate, interview rate across *all* applications — not just the memorable ones the user posted about.
+- **Which resume wins:** reply rate per `resumeFileKey` — e.g. "Resume B gets 2× the replies." (This is *why* resume-per-application storage matters.)
+- **Which source responds:** reply rate/time per `source` — e.g. "Greenhouse replies in 6 days; LinkedIn rarely replies." (Needs auto source-tagging, below.)
+- **Cadence nudges:** "4 applied this week, 0 last" — a gentle, non-shaming prompt (never a "you're behind others" scoreboard).
+
+### Cross-board "already applied" dedupe `[new]`
+The same job shows up on LinkedIn + Indeed + the company's own Greenhouse. Normalize `company + title + location` (plus the ATS `sourceJobId` when present) into a `dedupeKey`, and warn **"you already applied here 3 weeks ago."** Genuinely useful on its own, and the foundation for later aggregate de-duplication.
+
+### Auto source-tagging `[new]`
+Tag every application by where it came from (board/ATS). It's the user's own metadata → **zero aggregation risk**, and it unlocks the "which source responds" insight above. Populated automatically by the extension, or a dropdown on manual entry.
+
+### Application graveyard `[new · on-brand humor]`
+A darkly-funny view of dead / ghosted applications — cathartic, a shared shrug at the void. Respects the **"never gamify failure"** rule: it's commiseration, *not* a rejection counter to climb. (See [Phase 4](phase-4-trust-and-gamification.md)'s hard rule.)
+
+### Companion Chrome extension — capture MVP `[new · OPTIONAL companion · gated behind the tracker existing]`
+A thin browser client that saves the job on the page you're viewing straight into your tracker. **It's a multiplier on the tracker — pointless before the tracker exists**, so it is explicitly a *companion*, not a prerequisite.
+- **Extraction, robust-first:** read `schema.org/JobPosting` **JSON-LD** first (stable, standardized, present on most job pages for Google-Jobs SEO), then OpenGraph/microdata, then per-site CSS adapters only where structured data is missing. One generic extractor covers many sites for free.
+- **Adapter registry** (mirrors "categories are data, not code"): each site is one small module implementing `matches(url)` + `extract(doc) → NormalizedJob`. **Adding a site = one file, never a core change** — this is the whole maintainability story.
+- **Manifest V3**, `activeTab` + **per-host opt-in** permissions (never `<all_urls>` — better for Web Store review *and* trust), local-first storage, syncs to the tracker when signed in.
+- **Writes to the SAME private `Application` model** — no second backend; PII stays owner-only, on-brand "only the page you're on, only when you act."
+
+```mermaid
+graph TD
+  CS["Content script<br/>JSON-LD → OG → site adapter → NormalizedJob"] --> SW["Service worker<br/>dedupe + local cache"]
+  SW -->|signed in| API["Tracker API<br/>(private Application model)"]
+  style API fill:#3d1f0b,color:#fff
+```
+
+> **⚠️ Optional / harder tier — defer, and it *will* break:** ATS pages (**Greenhouse / Lever / Ashby**) are easy and stable — start there. **LinkedIn and Workday are fragile and high-maintenance** (aggressive anti-automation; obfuscated, iframe-heavy, per-tenant markup) — support them *last*, current-page-only, opt-in, and accept ongoing breakage. **Auto-filling applications** and **auto-detecting outcomes** are deliberately **not** here — see [Phase 6 optional](phase-6-ai-and-monetization.md). The extension's *community overlay* (its real differentiator) is [Phase 3](phase-3-depth-and-growth.md).
+
+---
+
+## 🔧 Build notes — services & decisions (brief)
+*A build log for future-you: per service, what we build, the key decision, and why.*
+- **Application tracker** — a **separate Prisma model**, owner-only through the backend. **Decision:** *not* derived from Sinks; the only public link is a one-way, user-confirmed "post a Sink from this." **Why:** the pseudonymity wall — real PII must never leak into the public world.
+- **Resume / cover-letter storage** — **Supabase Storage private bucket**, backend-mediated, signed short-lived URLs. **Decision:** private-by-default, encrypted at rest. **Why:** resumes make you a breach target; minimize exposure.
+- **Data export / delete** — shipped *with* the tracker. **Decision:** soft-delete public content, **hard-remove** private PII/resumes. **Why:** table stakes once PII exists (India DPDP / GDPR).
+- **Weekly digest** — **Resend** (free tier, TS SDK), unsubscribe-first. **Decision:** weekly digest + in-app bell now; **no per-event email** yet (that's Phase 3, opt-in, batched). **Why:** per-event email fatigue churns faster than silence.
+- **In-app notifications** — `Notification` rows on reply/buoy/reaction/poll + a header bell. **Decision:** a *small* fixed set, in-app first. **Why:** over-notifying is as bad as under-notifying; follow-based alerts wait for Phase 3.
+- **"Not alone" counter + ghost timer** — fuzzy text-match on free-text `company`. **Decision:** vibes, never a precise stat; **no `Company` table.** **Why:** honesty + consistency with the deferred Ghost Index.
+- **Personal insights** — single-user math over the tracker rows. **Decision:** **no cross-user aggregation** in this phase. **Why:** anything cross-user is the Ghost Index (Phase 3), gated.
+- **Companion extension** — MV3, structured-data-first adapters, per-host opt-in perms, local-first, **writes the same `Application` model.** **Decision:** JSON-LD → OpenGraph → per-site CSS fallback; one file per site. **Why:** maintainability + ToS-defensibility.
+- **Analytics** — privacy-respecting event store (returns, cohorts, funnel). **Decision:** measure retention (needed to pass the gate), "no creepy tracking." **Why:** you can't prove retention without measuring it.
+
 ---
 
 ## Tradeoffs & decisions
@@ -116,9 +164,11 @@ You cannot pass "people come back across weeks" without measuring it: lightweigh
 - **Email deliverability & fatigue:** start weekly, unsubscribe-first, warm the domain — a spammy digest churns faster than none.
 - **Notification scope creep:** ship a *small* set (reply/buoy/react/poll) well before follows; over-notifying is as bad as under-notifying.
 - **Counter honesty:** free-text match is fuzzy ("Amazon"/"amazon"/"Amazon India") — solidarity vibes, never a statistic (keeps you consistent with the deferred Ghost Index and honest by brand).
+- **The extension is a companion, not the product:** it captures the page the user is *viewing*, for their *own private* tracker (ToS-defensible) — it must never drift into a jobs board or a bulk scraper. Prefer JSON-LD to brittle CSS selectors so a site redesign doesn't break capture. Maintenance cost is real; keep the supported-site list small and structured-data-first.
+- **Personal insights are safe; community aggregates are not (yet):** everything in this phase is single-user math. The moment an insight crosses users it becomes the **Ghost Index** ([Phase 3](phase-3-depth-and-growth.md)) — gated separately behind opt-in, k-anonymity, and legal review. Don't let "insights" quietly become cross-user analytics here.
 
 ## Safety this phase
-Private-by-default storage + owner-only access; data export/delete; unsubscribe; abuse-aware notifications (no notification-spam vector); still report/hide + rate limits.
+Private-by-default storage + owner-only access; data export/delete; unsubscribe; abuse-aware notifications (no notification-spam vector); still report/hide + rate limits. Extension uses **minimal, per-site opt-in** permissions and is **local-first** — captured data never leaves the private tracker.
 
 ## Exit gate
 **Measurable return behaviour** — people come back across multiple sessions/weeks, not just once (now visible via the analytics you added). Only then proceed to Phase 3.

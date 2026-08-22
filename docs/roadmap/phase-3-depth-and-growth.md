@@ -9,7 +9,7 @@
 > **Why this phase is the pivotal expansion:** it's the first phase that serves people who only *read* — a far larger group than posters — via discovery and SEO. That's the real growth unlock.
 
 ## What the user can newly do
-Discover via hot / top / rising, per-category hubs, and search · follow categories/users and get a personalized "your feed" · browse "Sinks mentioning [company]" · and — the big one — **arrive from Google** onto a rich interview-experience page and find a whole community behind it.
+Discover via hot / top / rising, per-category hubs, and search · follow categories/users and get a personalized "your feed" · browse "Sinks mentioning [company]" · see that community intel **on the job page itself** through the companion extension's overlay · and — the big one — **arrive from Google** onto a rich interview-experience page and find a whole community behind it.
 
 ---
 
@@ -25,7 +25,7 @@ erDiagram
     InterviewExperience { string sinkId PK; string company; string role; int rounds; enum difficulty; enum stageReached; enum outcome; string questions }
     ModerationAction { string id PK; string moderatorId; string targetType; string targetId; enum action "HIDE|RESTORE|WARN|SUSPEND"; string reason; datetime createdAt }
 ```
-Plus **Postgres full-text search** indexes (`tsvector` on Sink title/body) — no new infra. *(Ghost-Index fork only:* a `Company` table + `Sink.companyId`.)
+Plus **Postgres full-text search** indexes (`tsvector` on Sink title/body) — no new infra. *(Ghost-Index fork only:* a `Company` table + `Sink.companyId`.) *(Aggregate-insights fork only:* an anonymized, **opt-in `Signal` store** — `{ companyRef, event "GHOSTED|RESPONDED|INTERVIEW|OFFER", days, salaryRange }` — kept **separate from the private tracker, with no re-identifying link**.)
 
 ---
 
@@ -35,7 +35,10 @@ Plus **Postgres full-text search** indexes (`tsvector` on Sink title/body) — n
 Hot / top / rising algorithms; **category hubs** (a page per category — all Interview Experiences, all Bad-Boss stories); **search** via Postgres full-text search (upgrade to a dedicated engine only if genuinely outgrown).
 
 ### Notifications (full) `[expand]`
-Everything from [Phase 2](phase-2-retention.md) + thread-activity digests + follow-based alerts + per-type preferences.
+Everything from [Phase 2](phase-2-retention.md) (in-app reply/buoy/reaction/poll bell) **+ opt-in email on those events**, thread-activity digests, follow-based alerts, and **per-type preferences**.
+- **Per-event email is opt-in and batched, never default.** "Someone upvoted you" emails are a fatigue + deliverability trap — start users on in-app + the weekly digest (Phase 2), and let them *turn on* email per type here. Batch bursts (e.g. one email per thread per hour, not one per reply).
+- Extend `EmailPrefs` from a single `weeklyDigest` flag to **per-type toggles** (`replyEmail`, `milestoneEmail` for buoy/reaction milestones, `followAlertEmail`), still unsubscribe-first, still via Resend.
+- **Milestone, not per-tap:** email on *"your Sink hit 50 buoys"*, not on every single vote — solidarity + return pull without the spam.
 
 ### Following / feed personalization `[in-plan]`
 Follow categories or users; "your feed" vs "everything."
@@ -63,6 +66,40 @@ graph TD
 ### Moderation console `[new · required at this scale]`
 A report **queue**, hide/restore, user warnings/suspensions, spam heuristics. Manual review doesn't scale past a point — build the tooling *before* the community outgrows it.
 
+### Companion extension — community overlay `[new · the acquisition loop — the real differentiator]`
+The [Phase-2 capture extension](phase-2-retention.md) grows a *second* job: on any job/company page, surface **SinkedIn community content in-context** — "🌊 4 Sinks about this company", interview experiences, ghost-timer vibes — right where people are hunting. This turns a private utility into an **acquisition channel** that pulls readers back to the site, and it's the one thing generic trackers (Teal / Huntr / Simplify) **can't copy — they have no community.** If you build the extension for any reason, this is *the* reason.
+
+```mermaid
+graph LR
+    JOB["Job page (LinkedIn / Greenhouse / …)"] --> OV["Extension overlay<br/>reads PUBLIC feed + SEO hubs"]
+    OV --> INTEL["'4 Sinks about this company'<br/>interview experiences · ghost vibes"]
+    INTEL --> SITE["Click → SinkedIn"]
+    SITE --> SIGNUP(("returns / signs up"))
+    style OV fill:#3B82F6,color:#fff
+    style SIGNUP fill:#10B981,color:#fff
+```
+- Reads from the **public** feed / SEO hubs only — pseudonymous, **no PII** on the overlay.
+- It *is* the interview-experience hub, delivered contextually — a direct multiplier on the Phase-3 SEO work.
+- Company matching is fuzzy free-text first (vibes); precise per-company needs the canonical fork below.
+
+### Aggregate insights & the signal pipeline `[new · OPTIONAL · opt-in · ties to the Ghost Index]`
+Turn *opted-in* tracker events into honest **community insights** (ghost rate, time-to-reply, salary ranges) — the on-brand version of "crowd intel," and the bridge from the private tracker to the Ghost Index.
+
+```mermaid
+graph TD
+    T["Private Application<br/>(PII, owner-only)"]:::pii
+    T -->|"opt-in only · de-identified"| S["Anonymized Signal store<br/>{companyRef, event, days}"]:::pub
+    S --> AGG["Rollups (materialized views)<br/>k-anonymity gated · N ≥ threshold"]
+    AGG --> PUB["Public 'vibes' insights<br/>→ site + extension overlay"]
+    classDef pii fill:#3d1f0b,color:#fff
+    classDef pub fill:#0b3d2e,color:#fff
+```
+- **Two stores, hard-separated (the pseudonymity wall as a pipeline):** the private `Application` (PII, owner-only) and a separate **anonymized `Signal`** store with *no* re-identifying link. Contributing to aggregates is a **separate explicit opt-in**, distinct from *using* the tracker.
+- **k-anonymity gate:** never surface a company stat below N distinct users (both a privacy guard *and* an honesty guard — "3 reports about a 4-person startup" both identifies people and lies). Present as **vibes / ranges, never false precision** — consistent with the [Phase-2 "not alone" counter](phase-2-retention.md) and the SEO integrity rule.
+- **Cross-board dedupe** (the Phase-2 `dedupeKey`) prevents triple-counting the same job seen on three boards.
+
+> **⚠️ Real, named-company scorecards = the Ghost Index fork (below), not a small feature.** Fuzzy text-match gives "vibes" for free; precise per-company ghost rates need canonical company identity **plus** k-anonymity, legal review, and anti-poisoning. Don't drift into it — commit deliberately.
+
 ---
 
 ## The optional fork — bring back the Ghost Index (deliberate, TypeScript)
@@ -81,7 +118,22 @@ graph LR
 
 - Built as a **TypeScript/Node service** (read-heavy, bounded, doesn't gate the core product) — **not Python.**
 - A **real added-scope commitment, decided on purpose.** The community succeeds without it; the Phase-2 text-match "not alone" counter already covers the emotional need.
-- [Phase 4](phase-4-trust-and-gamification.md) verification would later *weight* this data to make it credible.
+- **Fed by the opt-in signal pipeline** (see *Aggregate insights* above): the extension/tracker emit de-identified events; scorecards are **k-anonymity-gated rollups**, never computed from raw PII.
+- **Legal weight is real:** named-company stats are review-site territory — India **DPDP** consent, k-anonymity thresholds, honest "user-reported" framing, anti-poisoning, and a lawyer conversation *before* launch. Store only *derived signals*, **never** republished (copyrighted) job descriptions.
+- [Phase 4](phase-4-trust-and-gamification.md) verification would later *weight* this data to make it credible (a verified report counts for more, which is also the anti-poisoning defense).
+
+---
+
+## 🔧 Build notes — services & decisions (brief)
+*A build log for future-you: per service, what we build, the key decision, and why.*
+- **Discovery & sorting** — hot / top / rising as ranking queries over `score` + recency, hot lists materialized. **Decision:** compute in Postgres; rate-limits now, vote-ring detection later. **Why:** ranking invites gaming.
+- **Category / company hubs** — SSR server components over existing data; company via fuzzy text-match. **Decision:** ship hubs early (pull basic SEO forward). **Why:** SEO compounds slowly.
+- **Search** — **Postgres full-text** (`tsvector`). **Decision:** FTS, not a dedicated engine. **Why:** free and enough for a long time.
+- **Interview-Experience hub + SEO** — structured template, SSR + **JSON-LD**, per-hub sitemaps, canonical tags. **Decision:** indexed pages must be *real* experiences. **Why:** fake/AI pages poison trust + search reputation.
+- **Companion extension overlay** — injects a community-intel card on job pages, reading the **public** feed/hubs. **Decision:** public/pseudonymous data only. **Why:** the acquisition loop without touching PII.
+- **Aggregate signal pipeline** — separate anonymized `Signal` store, **opt-in**, k-anonymity-gated rollups (materialized views), cross-board dedupe via `dedupeKey`. **Decision:** two hard-separated stores; vibes/ranges only. **Why:** privacy + honesty + legal (DPDP / defamation).
+- **Moderation console** — report queue, hide/restore, warn/suspend, spam heuristics. **Decision:** build the tooling *before* the community outgrows manual review. **Why:** manual review doesn't scale.
+- **Notifications (full)** — opt-in, batched, per-type email via Resend; `EmailPrefs` per-type toggles. **Decision:** milestone/batched, never per-tap. **Why:** fatigue + deliverability.
 
 ---
 
@@ -90,9 +142,12 @@ graph LR
 - **Ranking invites gaming:** hot/top need basic anti-manipulation (vote-ring detection later; rate limits now).
 - **The Ghost Index fork is lossy + ongoing:** backfilling free-text → canonical is imperfect and never "done" — only commit if the data *product* is genuinely wanted.
 - **Search infra restraint:** Postgres FTS is free and enough for a long time — don't reach for a dedicated engine prematurely.
+- **Aggregation is a legal + integrity surface, not just code:** community stats need explicit opt-in, k-anonymity gating, honest "vibes/ranges" framing, and (for named companies) legal review — the same "real data only" bar as SEO. Aggregating others' *job postings* into a redistributed dataset also risks site-ToS / copyright trouble; store derived signals, not scraped descriptions.
+- **Aggregate poisoning:** public per-company numbers invite manipulation (a competitor tanks a company's ghost rate) — needs rate limits, per-user weighting, and later verification-weighting ([Phase 4](phase-4-trust-and-gamification.md)).
+- **Extension maintainability:** the overlay reads *public* content and the capture uses **structured-data-first** adapters — a site redesign degrades gracefully (fall back to JSON-LD/OG) rather than breaking. Keep the supported-site list deliberate; LinkedIn/Workday stay the fragile, opt-in tier.
 
 ## Safety this phase
-Moderation console; anti-spam heuristics; SEO content integrity; report-queue SLAs.
+Moderation console; anti-spam heuristics; SEO content integrity; report-queue SLAs. Aggregate insights are **opt-in + k-anonymity-gated + anti-poisoning**; the extension overlay uses **public, pseudonymous data only** (no PII leaves the private world).
 
 ## Exit gate
 **Measurable organic growth** — content pulling in new users via search/shares, and discovery/notifications lifting repeat engagement.

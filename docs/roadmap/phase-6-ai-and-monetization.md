@@ -7,7 +7,7 @@
 > **Entry gate:** a proven, retained, growing product with trust signals (Phases 1–4 gates all passed).
 
 ## What the user can newly do
-Get an instant **AI roast/commiseration** on a rejection · **auto-fill a Sink** by pasting the rejection email (AI extracts fields; you confirm) · **decode corporate-speak** ("your experience more closely aligns" → the honest meaning) · (power users) pay for deeper tools · (companies) participate honestly and earn a "we don't ghost" badge.
+Get an instant **AI roast/commiseration** on a rejection · **auto-fill a Sink** by pasting the rejection email (AI extracts fields; you confirm) · **decode corporate-speak** ("your experience more closely aligns" → the honest meaning) · (opt-in) let AI help **detect a tracked application's outcome** from a forwarded email · (power users) pay for deeper tools · (companies) participate honestly and earn a "we don't ghost" badge.
 
 ---
 
@@ -32,6 +32,16 @@ sequenceDiagram
 ```
 
 **AI features:** the roast (instant commiseration), the corporate-speak translator, compose auto-fill. **Guardrail:** AI must never fabricate a user's experience — pre-fill + user confirmation only; the human owns the post. Add cost controls, rate limits, and graceful degradation (feature fails → manual form still works).
+
+---
+
+## Optional automation — outcome detection, autofill, hard-site extraction `[optional · deferred · fragile — manage expectations]`
+The tempting-but-unreliable frontier (the features that *sound* magical and break constantly). All **opt-in**, all **confirmation-gated**, none on the critical path.
+- **Outcome detection (AI-assisted):** user forwards an email (or connects Gmail with explicit scope) → AI classifies *rejection / interview invite / offer* → **suggests** a tracker status update the user confirms. **Reality check:** flaky across companies/languages, privacy-heavy (email access) — *this is exactly why it lives here and not in the [Phase-2 tracker](phase-2-retention.md).* Never auto-change status without confirmation.
+- **AI-assisted extraction for hard sites:** where JSON-LD + CSS adapters fail (Workday, obfuscated pages), an LLM parses messy DOM/text into `NormalizedJob`. **Decision:** a cost-capped, cached **fallback** — structured-data-first stays the default path.
+- **Application autofill:** pre-fill ATS forms from the stored profile/resume. **Decision:** **deferred, low priority** — high maintenance, crowded space (Simplify et al.), **not SinkedIn's differentiator.** Build only if clearly demanded.
+
+> **Why these are last:** each adds cost, failure surface, and privacy burden for *convenience*, not for the core value (catharsis + community). Ship only on a validated product, opt-in, degrading gracefully to the manual flow.
 
 ---
 
@@ -61,6 +71,13 @@ All paths run on the **same Sink data captured since Phase 1** — which is *why
 
 ## Data model additions
 `EmployerAccount(orgName, domain, verified)` · `EmployerBadge(orgDomain, kind "NO_GHOST", grantedAt)` · billing records (Stripe customer/subscription) · AI usage/cost ledger (`AiUsage(userId, feature, tokens, costCents)`).
+
+## 🔧 Build notes — services & decisions (brief)
+*A build log for future-you: per service, what we build, the key decision, and why.*
+- **AI service (TS)** — thin wrapper over the **latest Claude models**; endpoints `extract`, `roast`, `translate`, `classify-outcome`. **Decision:** additive on top of the manual schema; **the human confirms every write.** **Why:** AI never fabricates a user's experience; the manual form is always the fallback.
+- **AI cost controls** — `AiUsage` ledger + per-user rate limits + caching + graceful degradation. **Decision:** guard unit economics *before* scaling any AI feature. **Why:** silent AI cost can sink a free product.
+- **Employer accounts** — distinct account role (`EmployerAccount` / `EmployerBadge`). **Decision:** employers see **aggregate / opt-in** data only, **never** de-anonymized users. **Why:** the pseudonymous side stays sacrosanct even when money enters.
+- **Payments** — **Stripe** (TS SDK), subscriptions + one-off. **Decision:** never paywall the cathartic core; only advanced utilities. **Why:** the free vent-and-community *is* the product.
 
 ## Tradeoffs & decisions
 - **AI must never fabricate experience** — confirmation-gated pre-fill only.
