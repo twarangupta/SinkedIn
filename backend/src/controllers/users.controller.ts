@@ -3,7 +3,7 @@
  */
 
 import type { NextFunction, Request, Response } from 'express';
-import { getUserByHandle } from '../services/users.service.js';
+import { getUserByHandle, updateMyAvatar } from '../services/users.service.js';
 import { getMyVoteState } from '../services/votes.service.js';
 
 /**
@@ -36,6 +36,27 @@ export async function getMyVotes(
     }
     const state = await getMyVoteState(req.user.id);
     res.json(state);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PATCH /api/v1/users/me → change the caller's avatar. Body { avatarId } has
+ * already been Zod-validated at the route boundary. Returns { user }.
+ */
+export async function updateMe(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+    const user = await updateMyAvatar(req.user.id, req.body.avatarId);
+    res.json({ user });
   } catch (err) {
     next(err);
   }
