@@ -27,6 +27,8 @@ type Vote = 'BUOY' | 'ANCHOR';
 interface MyVotesValue {
   /** sinkId → the caller's Buoy/Anchor on that Sink. */
   voteBySink: Map<string, Vote>;
+  /** commentId → the caller's Buoy/Anchor on that Comment. */
+  voteByComment: Map<string, Vote>;
   /** sinkId → the poll option id the caller chose. */
   pollVoteBySink: Map<string, string>;
   /** True once the fetch has completed, so consumers only hydrate real data. */
@@ -35,6 +37,7 @@ interface MyVotesValue {
 
 const EMPTY: MyVotesValue = {
   voteBySink: new Map(),
+  voteByComment: new Map(),
   pollVoteBySink: new Map(),
   loaded: false,
 };
@@ -55,11 +58,15 @@ export function MyVotesProvider({ children }: { children: ReactNode }) {
     apiFetch<{
       votes: { sinkId: string; value: Vote }[];
       pollVotes: { sinkId: string; pollOptionId: string }[];
+      commentVotes: { commentId: string; value: Vote }[];
     }>('/api/v1/users/me/votes')
       .then((res) => {
         if (cancelled) return;
         setState({
           voteBySink: new Map(res.votes.map((v) => [v.sinkId, v.value])),
+          voteByComment: new Map(
+            res.commentVotes.map((v) => [v.commentId, v.value]),
+          ),
           pollVoteBySink: new Map(
             res.pollVotes.map((pv) => [pv.sinkId, pv.pollOptionId]),
           ),
