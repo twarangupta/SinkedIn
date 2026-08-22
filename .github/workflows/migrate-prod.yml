@@ -1,0 +1,63 @@
+# Apply Prisma migrations to PRODUCTION.
+#
+# Runs when a push to `main` changes the migrations folder (i.e. a new
+# migration was merged). It applies pending migrations to the prod Supabase
+# database with `prisma migrate deploy` — the same command CI already runs
+# against the throwaway test DB, just pointed at prod.
+#
+# WHY THIS EXISTS: the deploy pipeline (Render) ships new *code* on merge but
+# does NOT touch the database. Without this, a merge that adds a column leaves
+# prod running new code against an old schema → 500s. This closes that gap.
+#
+# ORDERING NOTE: Render also auto-deploys code on the same push, in parallel.
+# For *additive/backward-compatible* migrations (add a nullable/defaulted
+# column — the normal case) either order is fine; there may be a brief window
+# if code lands first. For destructive changes, use the expand/contract pattern
+# (deploy the additive migration, ship code, then a later migration removes the
+# old column) so the two are never incompatible at once.
+
+name: Migrate prod DB
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/prisma/migrations/**'
+  # Allow re-running by hand from the Actions tab if a run failed.
+  workflow_dispatch:
+
+# Never let two migration runs overlap.
+concurrency:
+  group: migrate-prod
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: prisma migrate deploy (prod)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      # migrate deploy uses the DIRECT (non-pooled) connection. Point both vars
+      # at the prod direct URL, stored as a GitHub Actions secret — never in the
+      # repo. Get it from Supabase → Project → Database → Connection string
+      # (Direct connection, port 5432), NOT the pooler.
+      DATABASE_URL: ${{ secrets.PROD_DIRECT_URL }}
+      DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply pending migrations to prod
+        run: npx prisma migrate deploy
