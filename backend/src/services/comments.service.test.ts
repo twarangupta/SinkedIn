@@ -4,13 +4,19 @@
 
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '../lib/prisma.js';
-import { createComment, getCommentsForSink } from './comments.service.js';
+import {
+  createComment,
+  getCommentsForSink,
+  stepCommentVote,
+} from './comments.service.js';
 
 let userId: string;
+let voterId: string;
 let sinkId: string;
 let otherSinkId: string;
 
 async function clear() {
+  await prisma.commentVote.deleteMany(); // children before parents (FK order)
   await prisma.comment.deleteMany();
   await prisma.sink.deleteMany();
   await prisma.user.deleteMany();
@@ -26,6 +32,10 @@ beforeEach(async () => {
     data: { supabaseUserId: 'seed:c', handle: 'Commenter_001' },
   });
   userId = user.id;
+  const voter = await prisma.user.create({
+    data: { supabaseUserId: 'seed:v', handle: 'Voter_002' },
+  });
+  voterId = voter.id;
   const sink = await prisma.sink.create({
     data: { userId: user.id, categoryId: category.id, title: 'x' },
   });
@@ -78,5 +88,49 @@ describe('getCommentsForSink', () => {
 
     const comments = await getCommentsForSink(sinkId);
     expect(comments.map((c) => c.body)).toEqual(['one', 'two']);
+  });
+
+  it('exposes the cached comment score', async () => {
+    const c = await createComment(userId, sinkId, 'scored');
+    await stepCommentVote(voterId, c.id, 'UP');
+    const [fetched] = await getCommentsForSink(sinkId);
+    expect(fetched.score).toBe(1);
+  });
+});
+
+describe('stepCommentVote', () => {
+  it('buoys a comment: score 1, myVote BUOY', async () => {
+    const c = await createComment(userId, sinkId, 'vote me');
+    const res = await stepCommentVote(voterId, c.id, 'UP');
+    expect(res).toEqual({ score: 1, myVote: 'BUOY' });
+  });
+
+  it('clamps: a second UP on an existing Buoy is a no-op (stays +1)', async () => {
+    const c = await createComment(userId, sinkId, 'clamp');
+    await stepCommentVote(voterId, c.id, 'UP');
+    const res = await stepCommentVote(voterId, c.id, 'UP');
+    expect(res).toEqual({ score: 1, myVote: 'BUOY' });
+  });
+
+  it('steps one at a time: Buoy → none → Anchor (never a 2-swing)', async () => {
+    const c = await createComment(userId, sinkId, 'stepper');
+    await stepCommentVote(voterId, c.id, 'UP'); // → BUOY (+1)
+    const off = await stepCommentVote(voterId, c.id, 'DOWN'); // → none (0)
+    expect(off).toEqual({ score: 0, myVote: null });
+    const anchor = await stepCommentVote(voterId, c.id, 'DOWN'); // → ANCHOR (-1)
+    expect(anchor).toEqual({ score: -1, myVote: 'ANCHOR' });
+  });
+
+  it('counts one vote per user per comment (two users → +2)', async () => {
+    const c = await createComment(userId, sinkId, 'popular');
+    await stepCommentVote(voterId, c.id, 'UP');
+    const res = await stepCommentVote(userId, c.id, 'UP');
+    expect(res.score).toBe(2);
+  });
+
+  it('rejects a vote on a missing comment', async () => {
+    await expect(
+      stepCommentVote(voterId, '00000000-0000-0000-0000-000000000000', 'UP'),
+    ).rejects.toThrow(/Comment not found/);
   });
 });
