@@ -19,6 +19,7 @@ export interface CreateSinkInput {
   categoryId: string;
   title: string;
   body?: string;
+  imageUrl?: string;
   company?: string;
   conclusion?: Conclusion;
   conclusionOther?: string;
@@ -30,6 +31,7 @@ const sinkPublicSelect = {
   id: true,
   title: true,
   body: true,
+  imageUrl: true,
   company: true,
   conclusion: true,
   conclusionOther: true,
@@ -108,6 +110,7 @@ export async function createSink(userId: string, input: CreateSinkInput) {
       categoryId: category.id,
       title: input.title,
       body: input.body,
+      imageUrl: input.imageUrl,
       company,
       conclusion,
       conclusionOther,
