@@ -12,13 +12,22 @@ import {
   getByHandle,
   getMe,
   getMyVotes,
+  handleAvailability,
+  handleSuggestions,
+  markOnboardedHandler,
   updateMe,
+  updateMyHandle,
 } from '../controllers/users.controller.js';
 
 // Only a known avatar id is accepted. z.enum needs a non-empty tuple, which
 // AVATAR_IDS (a readonly const tuple) satisfies.
 const updateMeSchema = z.object({
   avatarId: z.enum(AVATAR_IDS),
+});
+
+// Set-handle body: deeper format/blocklist validation happens in the service.
+const updateHandleSchema = z.object({
+  handle: z.string().min(3).max(30),
 });
 
 const router = Router();
@@ -30,8 +39,24 @@ router.get('/me', requireAuth, getMe);
 // PATCH /api/v1/users/me — change the caller's avatar (auth required).
 router.patch('/me', requireAuth, validateBody(updateMeSchema), updateMe);
 
+// PATCH /api/v1/users/me/handle — change the caller's handle (auth required).
+router.patch(
+  '/me/handle',
+  requireAuth,
+  validateBody(updateHandleSchema),
+  updateMyHandle,
+);
+
+// POST /api/v1/users/me/onboarded — mark first-run onboarding complete.
+router.post('/me/onboarded', requireAuth, markOnboardedHandler);
+
 // GET /api/v1/users/me/votes — the caller's own votes, for client hydration.
 router.get('/me/votes', requireAuth, getMyVotes);
+
+// Handle picker helpers (public reads). Declared BEFORE /:handle so the
+// two-segment paths aren't shadowed.
+router.get('/handle/suggestions', handleSuggestions);
+router.get('/handle/available', handleAvailability);
 
 // GET /api/v1/users/:handle — public profile by handle.
 router.get('/:handle', getByHandle);
