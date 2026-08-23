@@ -26,15 +26,18 @@ const globalForPrisma = globalThis as unknown as {
  * The one PrismaClient the whole backend shares.
  * Reused from the global cache in dev; freshly created in production.
  */
+// Prod: errors only. Dev: warnings + errors (quiet terminal). Set
+// PRISMA_LOG_QUERIES=true to also log every SQL query when debugging.
+const logLevels =
+  process.env.NODE_ENV === 'production'
+    ? (['error'] as const)
+    : process.env.PRISMA_LOG_QUERIES === 'true'
+      ? (['query', 'warn', 'error'] as const)
+      : (['warn', 'error'] as const);
+
 export const prisma =
   globalForPrisma.prisma ??
-  new PrismaClient({
-    // Log queries and errors in dev; only errors in production.
-    log:
-      process.env.NODE_ENV === 'production'
-        ? ['error']
-        : ['query', 'warn', 'error'],
-  });
+  new PrismaClient({ log: [...logLevels] });
 
 // In development, stash the instance on the global object so the next
 // hot-reload reuses it instead of opening a second connection pool.
