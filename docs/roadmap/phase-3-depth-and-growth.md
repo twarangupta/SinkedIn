@@ -19,13 +19,17 @@ Discover via hot / top / rising, per-category hubs, and search · follow categor
 erDiagram
     User ||--o{ Follow : creates
     Sink ||--o| InterviewExperience : "detail (Interview category)"
+    InterviewExperience ||--o{ InterviewRound : "ordered rounds"
     Sink ||--o{ ModerationAction : "may receive"
 
     Follow { string id PK; string userId FK; enum targetType "CATEGORY|USER"; string targetId }
-    InterviewExperience { string sinkId PK; string company; string role; int rounds; enum difficulty; enum stageReached; enum outcome; string questions }
+    InterviewExperience { string sinkId PK; string company; string role; enum difficulty; enum stageReached; enum outcome; string questions }
+    InterviewRound { string id PK; string interviewExperienceId FK; int position; string title; string description }
     ModerationAction { string id PK; string moderatorId; string targetType; string targetId; enum action "HIDE|RESTORE|WARN|SUSPEND"; string reason; datetime createdAt }
 ```
-Plus **Postgres full-text search** indexes (`tsvector` on Sink title/body) — no new infra. *(Ghost-Index fork only:* a `Company` table + `Sink.companyId`.) *(Aggregate-insights fork only:* an anonymized, **opt-in `Signal` store** — `{ companyRef, event "GHOSTED|RESPONDED|INTERVIEW|OFFER", days, salaryRange }` — kept **separate from the private tracker, with no re-identifying link**.)
+Plus **Postgres full-text search** indexes (`tsvector` on Sink title/body) — no new infra.
+
+> **Captured refinement (session 2026-08-23):** rounds are a **structured list, not a count.** Replace the earlier `InterviewExperience.rounds: int` with a child `InterviewRound { position, title, description }` table (e.g. "Round 1: DSA screen" / "2 LeetCode-mediums, 45 min"). The composer gains a repeatable "add round" block; the `/s/:id` page renders them as a numbered list; the company hub reads them structured. `company` stays free text on the Sink (per the no-Company-table rule). This is the data hygiene the Phase-1 composer already nudges toward. *(Ghost-Index fork only:* a `Company` table + `Sink.companyId`.) *(Aggregate-insights fork only:* an anonymized, **opt-in `Signal` store** — `{ companyRef, event "GHOSTED|RESPONDED|INTERVIEW|OFFER", days, salaryRange }` — kept **separate from the private tracker, with no re-identifying link**.)
 
 ---
 
@@ -42,6 +46,8 @@ Everything from [Phase 2](phase-2-retention.md) (in-app reply/buoy/reaction/poll
 
 ### Following / feed personalization `[in-plan]`
 Follow categories or users; "your feed" vs "everything."
+
+> **Captured refinement (session 2026-08-23):** the pseudonymous **profile becomes a two-column identity page.** Right rail = an identity card (avatar, handle, member-since, **Aura** with a small breakdown, **followers / following** counts that open lists, a **Follow** button hidden on your own profile, post + comment counts, optionally top categories). Middle = tabs **Sinks** (author-scoped reuse of the feed) and **Comments**. All pseudonymous, no PII, never the private tracker. Needs: user→user `Follow`, a `GET /users/search?q=` (handle contains) wired to the header search, and a cached `User.aura`. **Aura formula sketch:** `buoys_on_your_sinks + buoys_on_your_comments + 2·posts` now; the `+10 verified interview exp` term waits for [Phase 4](phase-4-trust-and-gamification.md) verification (no verification mechanism exists before then, so the bonus is deferred, not built on a placeholder).
 
 ### Company mentions as soft tags `[in-plan]`
 Since `company` is free text, a lightweight "Sinks mentioning Amazon" text-match view — useful, low-effort, no canonical data.
