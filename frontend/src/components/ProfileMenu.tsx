@@ -46,7 +46,7 @@ export function ProfileMenu({ me }: { me: PublicUser }) {
         title="Your profile"
         className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-ink-2 transition-colors hover:bg-elevated hover:text-ink"
       >
-        <Avatar avatarId={me.avatarId} handle={me.handle} size={28} />
+        <Avatar avatarId={me.avatarId} handle={me.handle} size={36} />
         <span className="hidden max-w-[12rem] truncate sm:inline">
           {me.handle}
         </span>
