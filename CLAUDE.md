@@ -30,10 +30,10 @@ Frontend (Next.js App Router):
 - Browser env vars use the `NEXT_PUBLIC_` prefix. Dev server runs on port **5173** (matches backend CORS `FRONTEND_URL`).
 
 ## Schema ground truth
-`prisma/schema.prisma` is the source of truth for all data shapes. Always read it before writing code that touches User, Sink, Category, Vote, Comment, PollOption, or PollVote. Never invent or rename field names — if unsure, read the schema first.
+`prisma/schema.prisma` is the source of truth for all data shapes. Always read it before writing code that touches User, Sink, Category, Vote, Comment, CommentVote, PollOption, PollVote, or Report. Never invent or rename field names — if unsure, read the schema first. (Since Phase 1: `User.avatarId` + `User.handleChosen`, `Sink.imageUrl`, `Comment.score` + the `CommentVote` model, and the `Report` model all exist.)
 
 ## Product model (important)
-A Sink is a Reddit-style text post (title + body) with one **Category**. The category is chosen first; the compose form then reveals category-conditional optional fields (`company`, `conclusion`, poll options) based on the category's config flags (`showsCompany`, `showsConclusion`, `allowsPoll`, `requiresPoll`). Categories live in a table and are extensible without code changes.
+A Sink is a Reddit-style text post (title + body, plus an **optional image** via `imageUrl`) with one **Category**. The category is chosen first; the compose form then reveals category-conditional optional fields (`company`, `conclusion`, poll options) based on the category's config flags (`showsCompany`, `showsConclusion`, `allowsPoll`, `requiresPoll`). Categories live in a table and are extensible without code changes.
 
 ## Conventions
 - All API routes prefixed `/api/v1/`.
