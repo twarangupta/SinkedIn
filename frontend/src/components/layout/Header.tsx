@@ -12,6 +12,7 @@ import { useMe } from '../../lib/me';
 import { Button } from '../ui/Button';
 import { BoatMark } from '../BoatMark';
 import { ProfileMenu } from '../ProfileMenu';
+import { MobileMenu } from './MobileMenu';
 
 export function Header() {
   const { session } = useAuth();
@@ -37,17 +38,24 @@ export function Header() {
           className="hidden h-10 min-w-0 max-w-2xl flex-1 rounded-lg border border-line bg-elevated px-3 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-primary md:block"
         />
         <nav className="ml-auto flex shrink-0 items-center justify-end gap-1">
-          {session ? (
-            me ? (
-              <ProfileMenu me={me} />
+          {/* Desktop: profile menu / sign in. */}
+          <div className="hidden items-center lg:flex">
+            {session ? (
+              me ? (
+                <ProfileMenu me={me} />
+              ) : (
+                <span className="px-2 text-sm text-ink-3">…</span>
+              )
             ) : (
-              <span className="px-2 text-sm text-ink-3">…</span>
-            )
-          ) : (
-            <Button onClick={open} className="!h-9">
-              Sign in
-            </Button>
-          )}
+              <Button onClick={open} className="!h-9">
+                Sign in
+              </Button>
+            )}
+          </div>
+          {/* Mobile: hamburger drawer holding all nav + profile actions. */}
+          <div className="lg:hidden">
+            <MobileMenu />
+          </div>
         </nav>
       </div>
     </header>
