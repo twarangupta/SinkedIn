@@ -18,6 +18,7 @@ import {
   updateMe,
   updateMyHandle,
 } from '../controllers/users.controller.js';
+import { myBookmarksHandler } from '../controllers/bookmarks.controller.js';
 
 // Only a known avatar id is accepted. z.enum needs a non-empty tuple, which
 // AVATAR_IDS (a readonly const tuple) satisfies.
@@ -52,6 +53,9 @@ router.post('/me/onboarded', requireAuth, markOnboardedHandler);
 
 // GET /api/v1/users/me/votes — the caller's own votes, for client hydration.
 router.get('/me/votes', requireAuth, getMyVotes);
+
+// GET /api/v1/users/me/bookmarks — the caller's saved Sinks (newest first).
+router.get('/me/bookmarks', requireAuth, myBookmarksHandler);
 
 // Handle picker helpers (public reads). Declared BEFORE /:handle so the
 // two-segment paths aren't shadowed.

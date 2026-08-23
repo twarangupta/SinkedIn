@@ -26,6 +26,10 @@ import {
   createCommentHandler,
   listCommentsHandler,
 } from '../controllers/comments.controller.js';
+import {
+  addBookmarkHandler,
+  removeBookmarkHandler,
+} from '../controllers/bookmarks.controller.js';
 
 const createSinkSchema = z.object({
   categoryId: z.string().uuid(),
@@ -89,6 +93,10 @@ router.delete('/:id', requireAuth, deleteSinkHandler);
 
 router.post('/:id/vote', requireAuth, validateBody(voteSchema), voteHandler);
 router.delete('/:id/vote', requireAuth, unvoteHandler);
+
+// Bookmarks (private to the caller; toggle save/unsave).
+router.post('/:id/bookmark', requireAuth, addBookmarkHandler);
+router.delete('/:id/bookmark', requireAuth, removeBookmarkHandler);
 router.post(
   '/:id/poll-vote',
   requireAuth,

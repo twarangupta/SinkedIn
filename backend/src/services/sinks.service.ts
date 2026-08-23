@@ -62,7 +62,7 @@ const sinkPublicSelect = {
     },
     orderBy: { position: 'asc' },
   },
-  _count: { select: { comments: true, votes: true } },
+  _count: { select: { comments: true, votes: true, bookmarks: true } },
   // The single "top comment" to preview on the feed card: highest-scored
   // top-level (non-reply) comment, ties broken by newest — so an unvoted Sink
   // still shows its newest comment rather than an empty slot.
@@ -262,6 +262,26 @@ export async function getSinkById(id: string, userId?: string) {
   if (!sink) throw new AppError('Sink not found', 404);
   const [withState] = await attachMyState([sink], userId);
   return withState;
+}
+
+/**
+ * Fetch public Sinks by id (non-deleted), preserving the given id order.
+ * Used by the "Saved" bookmarks list. Anonymous-safe; `userId` enriches each
+ * Sink with the caller's own vote/poll state.
+ */
+export async function getPublicSinksByIds(ids: string[], userId?: string) {
+  if (ids.length === 0) return [];
+  const rows = await prisma.sink.findMany({
+    where: { id: { in: ids }, deletedAt: null },
+    select: sinkPublicSelect,
+  });
+  const withState = await attachMyState(rows, userId);
+  const byId = new Map(withState.map((s) => [s.id, s]));
+  // Preserve the caller-supplied order (e.g. newest-saved-first) and drop any
+  // ids that resolved to a deleted/missing Sink.
+  return ids
+    .map((id) => byId.get(id))
+    .filter((s): s is NonNullable<typeof s> => Boolean(s));
 }
 
 /**

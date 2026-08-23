@@ -18,6 +18,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { apiFetch } from '../lib/api';
 import { SinkCard } from './SinkCard';
+import { EmptyState } from './EmptyState';
 import type { FeedPage } from '../lib/server-api';
 import type { Sink } from '../types';
 
@@ -27,7 +28,7 @@ export function Feed({
   sort = 'latest',
   category,
   author,
-  emptyMessage = "Nothing's sunk yet. Be the first to overshare.",
+  emptyMessage,
 }: {
   initialSinks: Sink[];
   initialNextCursor: string | null;
@@ -91,7 +92,18 @@ export function Feed({
   }, [loadMore]);
 
   if (sinks.length === 0) {
-    return <p className="py-8 text-center text-ink-3">{emptyMessage}</p>;
+    // Callers may pass their own node (e.g. a tailored EmptyState); otherwise
+    // fall back to the shared iceberg empty state.
+    return (
+      <div className="py-8 text-center text-sm text-ink-3">
+        {emptyMessage ?? (
+          <EmptyState
+            title="You've hit an iceberg"
+            subtitle="Nothing's surfaced here yet. Be the first to overshare."
+          />
+        )}
+      </div>
+    );
   }
 
   return (

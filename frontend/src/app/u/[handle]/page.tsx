@@ -18,6 +18,7 @@ import { Avatar } from '@/components/avatar/Avatar';
 import { PageHeader } from '@/components/PageHeader';
 import { Feed } from '@/components/Feed';
 import { FeedFilter } from '@/components/FeedFilter';
+import { EmptyState } from '@/components/EmptyState';
 
 export async function generateMetadata({
   params,
@@ -90,9 +91,14 @@ export default async function ProfilePage({
             author={user.handle}
             category={category}
             emptyMessage={
-              category
-                ? 'No Sinks in this category yet.'
-                : "Hasn't made a splash yet."
+              <EmptyState
+                title="You've hit an iceberg"
+                subtitle={
+                  category
+                    ? 'No Sinks in this category yet.'
+                    : "This handle hasn't made a splash yet."
+                }
+              />
             }
           />
         </div>

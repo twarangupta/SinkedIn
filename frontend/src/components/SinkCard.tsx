@@ -13,8 +13,9 @@ import { PollBlock } from './PollBlock';
 import { Avatar } from './avatar/Avatar';
 import { ExpandableText } from './ExpandableText';
 import { SinkComments } from './SinkComments';
-import { ReportButton } from './ReportButton';
 import { SinkActions } from './SinkActions';
+import { ShareButton } from './ShareButton';
+import { BookmarkButton } from './BookmarkButton';
 import { timeAgo } from '../lib/format';
 import type { Sink } from '../types';
 
@@ -45,14 +46,24 @@ export function SinkCard({
           </Link>
           <div className="text-xs text-ink-3">{timeAgo(sink.createdAt)}</div>
         </div>
-        {/* Author-only edit/delete menu (renders null for everyone else). */}
-        <div className="ml-auto">
+        {/* Top-right: save (with count) + the ⋮ options menu (edit/delete/report). */}
+        <div className="ml-auto flex items-center gap-1">
+          <BookmarkButton
+            sinkId={sink.id}
+            showLabel={false}
+            count={sink._count.bookmarks}
+            authorId={sink.user.id}
+          />
           <SinkActions sink={sink} />
         </div>
       </header>
 
       <div className="mb-2">
-        <CategoryPill name={sink.category.name} color={sink.category.color} />
+        <CategoryPill
+          name={sink.category.name}
+          color={sink.category.color}
+          slug={sink.category.slug}
+        />
       </div>
       <Link href={`/s/${sink.id}`} className="hover:underline">
         <h3 className="mb-1 font-display text-lg font-medium">{sink.title}</h3>
@@ -87,6 +98,7 @@ export function SinkCard({
 
       <footer className="mt-2 flex items-center gap-4 text-sm text-ink-3">
         <VoteControl kind="sink" id={sink.id} score={sink.score} myVote={sink.myVote} />
+        <ShareButton sinkId={sink.id} title={sink.title} />
       </footer>
 
       {/* Feed only: read, vote, reply, and add comments inline (no navigation).
@@ -99,12 +111,6 @@ export function SinkCard({
         />
       )}
 
-      {/* Report is pinned to the card's bottom-right corner. Absolute so it
-          sits clear of the vote control without reserving its own row (which
-          was adding a strip of empty vertical space at the bottom). */}
-      <div className="absolute bottom-3 right-3">
-        <ReportButton targetType="SINK" targetId={sink.id} />
-      </div>
     </article>
   );
 }

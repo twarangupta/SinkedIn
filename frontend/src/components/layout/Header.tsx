@@ -14,7 +14,7 @@ import { BoatMark } from '../BoatMark';
 import { ProfileMenu } from '../ProfileMenu';
 
 export function Header() {
-  const { session, signOut } = useAuth();
+  const { session } = useAuth();
   const { open } = useAuthModal();
   const { me } = useMe();
 
@@ -38,20 +38,11 @@ export function Header() {
         />
         <nav className="ml-auto flex shrink-0 items-center justify-end gap-1">
           {session ? (
-            <>
-              {me ? (
-                <ProfileMenu me={me} />
-              ) : (
-                <span className="px-2 text-sm text-ink-3">…</span>
-              )}
-              <Button
-                variant="ghost"
-                onClick={signOut}
-                className="!h-9 whitespace-nowrap"
-              >
-                Sign out
-              </Button>
-            </>
+            me ? (
+              <ProfileMenu me={me} />
+            ) : (
+              <span className="px-2 text-sm text-ink-3">…</span>
+            )
           ) : (
             <Button onClick={open} className="!h-9">
               Sign in
