@@ -125,8 +125,9 @@ export async function getMyVoteState(userId: string): Promise<{
   votes: { sinkId: string; value: VoteValue }[];
   pollVotes: { sinkId: string; pollOptionId: string }[];
   commentVotes: { commentId: string; value: VoteValue }[];
+  bookmarks: string[];
 }> {
-  const [votes, pollVotes, commentVotes] = await Promise.all([
+  const [votes, pollVotes, commentVotes, bookmarks] = await Promise.all([
     prisma.vote.findMany({
       where: { userId },
       select: { sinkId: true, value: true },
@@ -139,6 +140,10 @@ export async function getMyVoteState(userId: string): Promise<{
       where: { userId },
       select: { commentId: true, value: true },
     }),
+    prisma.bookmark.findMany({
+      where: { userId },
+      select: { sinkId: true },
+    }),
   ]);
   return {
     votes,
@@ -147,6 +152,7 @@ export async function getMyVoteState(userId: string): Promise<{
       pollOptionId: pv.pollOptionId,
     })),
     commentVotes,
+    bookmarks: bookmarks.map((b) => b.sinkId),
   };
 }
 
