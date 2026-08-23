@@ -36,6 +36,7 @@ model User {
   pollVotes      PollVote[]
   reports        Report[]
   bookmarks      Bookmark[]
+  applications   Application[]
 }
 
 // A Sink is a Reddit-style post: always a title + body, categorized by a category.
@@ -213,4 +214,107 @@ model CommentVote {
   createdAt DateTime  @default(now())
 
   @@unique([commentId, userId]) // one vote per user per Comment
+}
+
+// --- Phase 2: private personal job tracker. Owner-only, real PII (real company
+// names, dates, notes). NEVER exposed in any public/pseudonymous response, never
+// indexed. The pseudonymity wall: tracker data does not leak to the public side;
+// the only bridge is a user-initiated "post a Sink from this" (built later). ---
+enum ApplicationStatus {
+  SAVED
+  APPLIED
+  OA // online assessment
+  INTERVIEW
+  OFFER
+  REJECTED
+  GHOSTED
+  WITHDRAWN
+  OTHER // free-text label in statusOther
+}
+
+model Application {
+  id          String            @id @default(uuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id])
+  company     String // free-text label (kept for display + as a fallback)
+  companyId   String? // resolved centralized Company (Phase 2 audit: capture-now)
+  companyRef  Company? @relation(fields: [companyId], references: [id])
+  role        String
+  status      ApplicationStatus @default(SAVED)
+  statusOther String? // used only when status = OTHER
+  jobUrl      String? // link to the original external posting
+  appliedAt   DateTime? // when the user applied (null while still SAVED)
+  notes       String?           @db.Text
+  deletedAt   DateTime? // soft delete (never hard-delete in normal operation)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  events      ApplicationEvent[]
+  rounds      InterviewRound[]
+
+  @@index([userId, status])
+  @@index([companyId])
+}
+
+// Centralized company entity (Phase 2 audit: capture-now). Neutral identity
+// (names only, no PII) so Jobs, Sinks, interviews, and salary reports can later
+// share one company and power aggregated insights. Deduped by normalizedName.
+model Company {
+  id             String        @id @default(uuid())
+  name           String // display name as first entered
+  normalizedName String        @unique // lowercased/trimmed key: dedupe + autocomplete
+  domain         String? // optional canonical domain, e.g. "razorpay.com"
+  createdById    String? // user id who first added it (no FK — outlives users)
+  verified       Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  applications   Application[]
+}
+
+// Status history for the tracker (Phase 2 audit: capture-now). One row per
+// status transition, plus the initial status on create, so personal analytics
+// (response time, ghosting duration, interview/offer rate) stay reconstructable.
+model ApplicationEvent {
+  id            String            @id @default(uuid())
+  applicationId String
+  application   Application       @relation(fields: [applicationId], references: [id])
+  status        ApplicationStatus
+  note          String?
+  createdAt     DateTime          @default(now())
+
+  @@index([applicationId, createdAt])
+}
+
+// Interview rounds are OPTIONAL and per-application (Phase 2 audit): a company
+// may have zero or many, in any shape. Users add / remove / reorder them, so the
+// count varies per company. Private (owner-only via the parent Application).
+enum InterviewRoundType {
+  PHONE_SCREEN
+  ONLINE_ASSESSMENT
+  TECHNICAL
+  SYSTEM_DESIGN
+  BEHAVIORAL
+  HIRING_MANAGER
+  HR
+  OTHER // free-text label in typeOther
+}
+
+enum InterviewRoundResult {
+  PENDING
+  CLEARED
+  REJECTED
+}
+
+model InterviewRound {
+  id            String               @id @default(uuid())
+  applicationId String
+  application   Application          @relation(fields: [applicationId], references: [id])
+  position      Int // display order (reorderable)
+  type          InterviewRoundType   @default(TECHNICAL)
+  typeOther     String? // used only when type = OTHER
+  scheduledAt   DateTime? // optional date/time of the round
+  result        InterviewRoundResult @default(PENDING)
+  notes         String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([applicationId, position])
 }
