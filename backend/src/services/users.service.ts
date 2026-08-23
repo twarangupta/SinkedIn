@@ -9,17 +9,24 @@
 
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
+import { AppError } from '../lib/errors.js';
+import { validateHandle } from '../lib/handle.js';
 import {
   defaultAvatarForHandle,
   isValidAvatarId,
   type AvatarId,
 } from '../lib/avatars.js';
 
-/** The public shape of a user — safe to return from any API response. */
+/**
+ * The public shape of a user — safe to return from any API response.
+ * `handleChosen` is not PII (just an onboarding flag); it drives the first-run
+ * "pick your handle" prompt for the caller.
+ */
 export interface PublicUser {
   id: string;
   handle: string;
   avatarId: string;
+  handleChosen: boolean;
   createdAt: Date;
 }
 
@@ -28,6 +35,7 @@ const publicUserSelect = {
   id: true,
   handle: true,
   avatarId: true,
+  handleChosen: true,
   createdAt: true,
 } satisfies Prisma.UserSelect;
 
@@ -121,6 +129,77 @@ export async function getUserByHandle(
 ): Promise<PublicUser | null> {
   return prisma.user.findUnique({
     where: { handle },
+    select: publicUserSelect,
+  });
+}
+
+// --- Handle picker: availability check, suggestions, and setting a handle. ---
+
+/** Is a handle usable? Checks format + blocklist, then DB uniqueness. */
+export async function checkHandleAvailability(
+  handle: string,
+): Promise<{ available: boolean; reason?: string }> {
+  const reason = validateHandle(handle);
+  if (reason) return { available: false, reason };
+  const existing = await prisma.user.findUnique({
+    where: { handle },
+    select: { id: true },
+  });
+  if (existing) return { available: false, reason: 'Taken. Try another.' };
+  return { available: true };
+}
+
+/**
+ * A few available, valid handle suggestions (Adjective_Noun_Number). Generates
+ * candidates and keeps only ones that pass validation and aren't taken.
+ */
+export async function generateHandleSuggestions(count = 4): Promise<string[]> {
+  const suggestions: string[] = [];
+  // Cap attempts so a crowded namespace can't loop forever.
+  for (let attempt = 0; attempt < count * 10 && suggestions.length < count; attempt++) {
+    const candidate = generateHandleCandidate();
+    if (suggestions.includes(candidate)) continue;
+    if (validateHandle(candidate)) continue; // skip anything blocklisted
+    const taken = await prisma.user.findUnique({
+      where: { handle: candidate },
+      select: { id: true },
+    });
+    if (!taken) suggestions.push(candidate);
+  }
+  return suggestions;
+}
+
+/**
+ * Set the caller's handle. Validates format + blocklist here (never trust the
+ * client), and maps the unique-constraint race to a clean "taken" error.
+ */
+export async function setMyHandle(
+  userId: string,
+  handle: string,
+): Promise<PublicUser> {
+  const reason = validateHandle(handle);
+  if (reason) throw new AppError(reason);
+  try {
+    return await prisma.user.update({
+      where: { id: userId },
+      // Choosing a handle also completes first-run onboarding.
+      data: { handle, handleChosen: true },
+      select: publicUserSelect,
+    });
+  } catch (error) {
+    if (isUniqueViolation(error)) throw new AppError('That handle is taken.');
+    throw error;
+  }
+}
+
+/**
+ * Mark first-run onboarding complete without changing the handle (the "keep my
+ * current one" path). Idempotent.
+ */
+export async function markOnboarded(userId: string): Promise<PublicUser> {
+  return prisma.user.update({
+    where: { id: userId },
+    data: { handleChosen: true },
     select: publicUserSelect,
   });
 }
