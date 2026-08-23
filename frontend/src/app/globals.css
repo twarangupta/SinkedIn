@@ -30,7 +30,8 @@
 
   /* --- Typography (loaded via <link> in layout) --- */
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  /* Trial: headings use Inter too (revert to 'Space Grotesk' to restore). */
+  --font-display: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
