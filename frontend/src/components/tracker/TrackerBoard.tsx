@@ -11,7 +11,7 @@
 
 import { useState } from 'react';
 import { shortDate } from '../../lib/format';
-import { BOARD_PRIMARY, BOARD_TERMINAL, STATUS_LABEL } from './status';
+import { BOARD_PRIMARY, BOARD_TERMINAL, STATUS_LABEL, STATUS_ORDER } from './status';
 import type { Application, ApplicationStatus } from '../../types';
 
 export function TrackerBoard({
@@ -102,6 +102,20 @@ export function TrackerBoard({
                       )}
                     </div>
                   )}
+                  {/* Touch devices can't drag between columns, so below lg a
+                      status dropdown moves the card instead. */}
+                  <select
+                    value={app.status}
+                    onChange={(e) => onChangeStatus(app, e.target.value as ApplicationStatus)}
+                    aria-label="Change status"
+                    className="mt-2 h-7 w-full rounded-lg border border-line bg-elevated px-1.5 text-xs text-ink outline-none focus:border-primary lg:hidden"
+                  >
+                    {STATUS_ORDER.map((s) => (
+                      <option key={s} value={s}>
+                        {STATUS_LABEL[s]}
+                      </option>
+                    ))}
+                  </select>
                   <div className="mt-2 flex items-center gap-3 text-xs">
                     <button onClick={() => onEdit(app)} className="text-ink-3 hover:text-ink">
                       Edit
