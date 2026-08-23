@@ -1,17 +1,19 @@
 'use client';
 
 /**
- * SinkActions — the author-only "···" menu at a Sink card's top-right.
+ * SinkActions — the vertical "⋮" options menu at a Sink card's top-right.
  *
- * Renders nothing unless the signed-in user (from useMe) owns this Sink. Offers
- * Edit (opens SinkEditor) and Delete (opens a themed confirm dialog → soft-delete
- * → refresh). Kept out of SinkCard's server component so the card stays
- * server-renderable.
+ * Shown on EVERY post (owner and non-owner, signed-in or out):
+ *   - Owner: Edit (opens SinkEditor) + Delete (themed confirm dialog → soft-delete).
+ *   - Everyone else: Report (two-step; signed-out opens the sign-in modal).
+ * Kept out of SinkCard's server component so the card stays server-renderable.
  */
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMe } from '../lib/me';
+import { useAuth } from '../lib/auth';
+import { useAuthModal } from '../lib/authModal';
 import { apiFetch } from '../lib/api';
 import { SinkEditor } from './SinkEditor';
 import { Button } from './ui/Button';
@@ -19,24 +21,35 @@ import type { Sink } from '../types';
 
 export function SinkActions({ sink }: { sink: Sink }) {
   const { me } = useMe();
+  const { session } = useAuth();
+  const { open: openAuth } = useAuthModal();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [confirming, setConfirming] = useState(false);
+  const [confirming, setConfirming] = useState(false); // delete dialog
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reportStage, setReportStage] = useState<'idle' | 'confirm' | 'done'>('idle');
+  const [reportBusy, setReportBusy] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
+
+  const isOwner = !!me && me.id === sink.user.id;
+
+  const closeMenu = () => {
+    setOpen(false);
+    setReportStage('idle');
+  };
 
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) closeMenu();
     };
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
   }, [open]);
 
-  // Close the confirm dialog on Escape (unless a delete is mid-flight).
+  // Escape closes the delete dialog (unless a delete is mid-flight).
   useEffect(() => {
     if (!confirming) return;
     const onKey = (e: KeyboardEvent) => {
@@ -45,9 +58,6 @@ export function SinkActions({ sink }: { sink: Sink }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [confirming, deleting]);
-
-  // Only the author sees this menu. (Server select exposes user.id, no PII.)
-  if (!me || me.id !== sink.user.id) return null;
 
   const del = async () => {
     setDeleting(true);
@@ -62,45 +72,101 @@ export function SinkActions({ sink }: { sink: Sink }) {
     }
   };
 
+  const report = async () => {
+    setReportBusy(true);
+    try {
+      await apiFetch('/api/v1/reports', {
+        method: 'POST',
+        body: JSON.stringify({ targetType: 'SINK', targetId: sink.id }),
+      });
+      setReportStage('done');
+    } catch {
+      setReportStage('idle');
+    } finally {
+      setReportBusy(false);
+    }
+  };
+
+  const itemCls =
+    'block w-full px-3 py-1.5 text-left text-sm text-ink-2 hover:bg-elevated';
+
   return (
     <div ref={ref} className="relative">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-label="Sink options"
+        onClick={() => {
+          setOpen((v) => !v);
+          setReportStage('idle');
+        }}
+        aria-label="Post options"
         aria-expanded={open}
         className="flex h-7 w-7 items-center justify-center rounded-full text-ink-3 hover:bg-elevated hover:text-ink"
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <circle cx="5" cy="12" r="1.6" />
+          <circle cx="12" cy="5" r="1.6" />
           <circle cx="12" cy="12" r="1.6" />
-          <circle cx="19" cy="12" r="1.6" />
+          <circle cx="12" cy="19" r="1.6" />
         </svg>
       </button>
 
       {open && (
-        <div className="absolute right-0 z-20 mt-1 w-40 rounded-lg border border-line bg-surface py-1 shadow-lg">
-          <button
-            type="button"
-            onClick={() => {
-              setEditing(true);
-              setOpen(false);
-            }}
-            className="block w-full px-3 py-1.5 text-left text-sm text-ink-2 hover:bg-elevated"
-          >
-            Edit
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setError(null);
-              setConfirming(true);
-              setOpen(false);
-            }}
-            className="block w-full px-3 py-1.5 text-left text-sm text-danger hover:bg-elevated"
-          >
-            Delete
-          </button>
+        <div
+          role="menu"
+          className="absolute right-0 z-20 mt-1 w-40 rounded-lg border border-line bg-surface py-1 shadow-lg"
+        >
+          {isOwner ? (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditing(true);
+                  setOpen(false);
+                }}
+                className={itemCls}
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null);
+                  setConfirming(true);
+                  setOpen(false);
+                }}
+                className="block w-full px-3 py-1.5 text-left text-sm text-danger hover:bg-elevated"
+              >
+                Delete
+              </button>
+            </>
+          ) : reportStage === 'done' ? (
+            <span className="block px-3 py-1.5 text-sm text-ink-3">
+              Reported. Thanks.
+            </span>
+          ) : reportStage === 'confirm' ? (
+            <button
+              type="button"
+              onClick={report}
+              disabled={reportBusy}
+              className="block w-full px-3 py-1.5 text-left text-sm font-medium text-danger hover:bg-elevated"
+            >
+              {reportBusy ? 'Reporting…' : 'Confirm report'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                if (!session) {
+                  openAuth();
+                  setOpen(false);
+                } else {
+                  setReportStage('confirm');
+                }
+              }}
+              className="block w-full px-3 py-1.5 text-left text-sm text-danger hover:bg-elevated"
+            >
+              Report
+            </button>
+          )}
         </div>
       )}
 
@@ -132,12 +198,7 @@ export function SinkActions({ sink }: { sink: Sink }) {
               >
                 Keep it
               </Button>
-              <Button
-                size="sm"
-                variant="danger"
-                onClick={del}
-                disabled={deleting}
-              >
+              <Button size="sm" variant="danger" onClick={del} disabled={deleting}>
                 {deleting ? 'Drowning…' : 'Drown it'}
               </Button>
             </div>
