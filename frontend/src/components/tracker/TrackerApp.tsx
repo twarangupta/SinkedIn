@@ -120,7 +120,7 @@ export function TrackerApp() {
 
   return (
     <div className={view === 'board' ? '' : 'mx-auto max-w-3xl'}>
-      <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-display text-xl font-medium">
           Your applications{apps ? ` (${apps.length})` : ''}
         </h2>
