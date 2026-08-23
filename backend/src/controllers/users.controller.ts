@@ -3,7 +3,14 @@
  */
 
 import type { NextFunction, Request, Response } from 'express';
-import { getUserByHandle, updateMyAvatar } from '../services/users.service.js';
+import {
+  checkHandleAvailability,
+  generateHandleSuggestions,
+  getUserByHandle,
+  markOnboarded,
+  setMyHandle,
+  updateMyAvatar,
+} from '../services/users.service.js';
 import { getMyVoteState } from '../services/votes.service.js';
 
 /**
@@ -56,6 +63,79 @@ export async function updateMe(
       return;
     }
     const user = await updateMyAvatar(req.user.id, req.body.avatarId);
+    res.json({ user });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/v1/users/me/onboarded → { user }. Marks first-run onboarding done
+ * without changing the handle ("keep my current one"). Auth required.
+ */
+export async function markOnboardedHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+    const user = await markOnboarded(req.user.id);
+    res.json({ user });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /api/v1/users/handle/suggestions → { suggestions: string[] }. Public.
+ */
+export async function handleSuggestions(
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const suggestions = await generateHandleSuggestions();
+    res.json({ suggestions });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /api/v1/users/handle/available?handle=X → { available, reason? }. Public.
+ */
+export async function handleAvailability(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const handle = typeof req.query.handle === 'string' ? req.query.handle : '';
+    res.json(await checkHandleAvailability(handle));
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PATCH /api/v1/users/me/handle { handle } → { user }. Auth required.
+ */
+export async function updateMyHandle(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+    const user = await setMyHandle(req.user.id, req.body.handle);
     res.json({ user });
   } catch (err) {
     next(err);
