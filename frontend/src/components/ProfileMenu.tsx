@@ -2,16 +2,19 @@
 
 /**
  * ProfileMenu — the signed-in user's avatar + handle in the header, which opens
- * a small dropdown (View profile, Settings). Closes on outside click, Escape,
- * or selecting an item. Sign out stays as its own header button.
+ * a small dropdown (View profile, Settings, Sign out). Closes on outside click,
+ * Escape, or selecting an item. This is the single auth control in the navbar —
+ * there is no separate Sign out button.
  */
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useAuth } from '../lib/auth';
 import { Avatar } from './avatar/Avatar';
 import type { PublicUser } from '../types';
 
 export function ProfileMenu({ me }: { me: PublicUser }) {
+  const { signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -70,6 +73,18 @@ export function ProfileMenu({ me }: { me: PublicUser }) {
           >
             Settings
           </Link>
+          <div className="my-1 border-t border-line" />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              signOut();
+            }}
+            className={`${itemCls} w-full text-left`}
+          >
+            Sign out
+          </button>
         </div>
       )}
     </div>
