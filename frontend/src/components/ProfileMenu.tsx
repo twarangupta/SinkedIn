@@ -66,6 +66,14 @@ export function ProfileMenu({ me }: { me: PublicUser }) {
             View profile
           </Link>
           <Link
+            href="/saved"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className={itemCls}
+          >
+            Saved
+          </Link>
+          <Link
             href="/settings"
             role="menuitem"
             onClick={() => setOpen(false)}
