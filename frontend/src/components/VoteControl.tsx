@@ -123,7 +123,7 @@ export function VoteControl({
           current === 'BUOY'
             ? 'text-buoy'
             : current === 'ANCHOR'
-              ? 'text-anchor'
+              ? 'text-buoy'
               : 'text-ink'
         }`}
       >
@@ -132,7 +132,7 @@ export function VoteControl({
       <button
         onClick={() => vote('DOWN')}
         aria-label="Anchor (downvote)"
-        className={`leading-none ${current === 'ANCHOR' ? 'text-anchor' : 'text-ink-3 hover:text-anchor'}`}
+        className={`leading-none ${current === 'ANCHOR' ? 'text-buoy' : 'text-ink-3 hover:text-buoy'}`}
       >
         ▼
       </button>

@@ -5,7 +5,12 @@
 
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '../lib/prisma.js';
-import { createSink, getFeed } from './sinks.service.js';
+import {
+  createSink,
+  deleteSink,
+  getFeed,
+  updateSink,
+} from './sinks.service.js';
 
 // Test fixtures created in beforeEach.
 let userId: string;
@@ -249,5 +254,137 @@ describe('getFeed', () => {
     const page2 = await getFeed({ limit: 2, cursor: page1.nextCursor! });
     expect(page2.sinks.map((s) => s.title)).toEqual(['p1']);
     expect(page2.nextCursor).toBeNull();
+  });
+
+  it("sort: 'top' orders by score (desc), independent of recency", async () => {
+    const low = await createSink(userId, { categoryId: discussionId, title: 'low' });
+    const high = await createSink(userId, { categoryId: discussionId, title: 'high' });
+    const mid = await createSink(userId, { categoryId: discussionId, title: 'mid' });
+    // Newest-first would be mid, high, low; by score it's high, mid, low.
+    await prisma.sink.update({ where: { id: high.id }, data: { score: 10 } });
+    await prisma.sink.update({ where: { id: mid.id }, data: { score: 5 } });
+    await prisma.sink.update({ where: { id: low.id }, data: { score: -2 } });
+
+    const { sinks } = await getFeed({ sort: 'top' });
+    expect(sinks.map((s) => s.title)).toEqual(['high', 'mid', 'low']);
+  });
+
+  it("sort: 'top' paginates with a stable cursor across score ties", async () => {
+    // Three Sinks all at the same score — the id tiebreak keeps paging stable.
+    const a = await createSink(userId, { categoryId: discussionId, title: 'a' });
+    const b = await createSink(userId, { categoryId: discussionId, title: 'b' });
+    const c = await createSink(userId, { categoryId: discussionId, title: 'c' });
+    for (const id of [a.id, b.id, c.id]) {
+      await prisma.sink.update({ where: { id }, data: { score: 3 } });
+    }
+
+    const page1 = await getFeed({ sort: 'top', limit: 2 });
+    expect(page1.sinks).toHaveLength(2);
+    const page2 = await getFeed({ sort: 'top', limit: 2, cursor: page1.nextCursor! });
+    // No duplicates and no skips: the two pages cover all three, once each.
+    const seen = [...page1.sinks, ...page2.sinks].map((s) => s.title).sort();
+    expect(seen).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('updateSink', () => {
+  it('lets the author edit title, body, and image', async () => {
+    const sink = await createSink(userId, {
+      categoryId: discussionId,
+      title: 'before',
+      body: 'old body',
+    });
+    const updated = await updateSink(userId, sink.id, {
+      title: 'after',
+      body: 'new body',
+      imageUrl: 'https://example.com/x.png',
+    });
+    expect(updated.title).toBe('after');
+    expect(updated.body).toBe('new body');
+    expect(updated.imageUrl).toBe('https://example.com/x.png');
+  });
+
+  it('clears a nullable field when passed null', async () => {
+    const sink = await createSink(userId, {
+      categoryId: discussionId,
+      title: 't',
+      body: 'has body',
+    });
+    const updated = await updateSink(userId, sink.id, { body: null });
+    expect(updated.body).toBeNull();
+  });
+
+  it('ignores company/conclusion when the category does not show them', async () => {
+    const sink = await createSink(userId, { categoryId: discussionId, title: 't' });
+    const updated = await updateSink(userId, sink.id, {
+      company: 'ShouldBeIgnored',
+      conclusion: 'REJECTED',
+    });
+    expect(updated.company).toBeNull();
+    expect(updated.conclusion).toBeNull();
+  });
+
+  it('requires conclusionOther when conclusion becomes OTHER', async () => {
+    const sink = await createSink(userId, { categoryId: interviewId, title: 't' });
+    await expect(
+      updateSink(userId, sink.id, { conclusion: 'OTHER' }),
+    ).rejects.toThrow(/conclusionOther/);
+  });
+
+  it('clears conclusionOther when moving off OTHER', async () => {
+    const sink = await createSink(userId, {
+      categoryId: interviewId,
+      title: 't',
+      conclusion: 'OTHER',
+      conclusionOther: 'weird',
+    });
+    const updated = await updateSink(userId, sink.id, { conclusion: 'GHOSTED' });
+    expect(updated.conclusion).toBe('GHOSTED');
+    expect(updated.conclusionOther).toBeNull();
+  });
+
+  it('rejects edits from a non-author (403)', async () => {
+    const other = await prisma.user.create({
+      data: { supabaseUserId: 'seed:other', handle: 'Other_User_002' },
+    });
+    const sink = await createSink(userId, { categoryId: discussionId, title: 't' });
+    await expect(
+      updateSink(other.id, sink.id, { title: 'hijacked' }),
+    ).rejects.toMatchObject({ statusCode: 403 });
+  });
+
+  it('throws 404 for a missing Sink', async () => {
+    await expect(
+      updateSink(userId, '00000000-0000-0000-0000-000000000000', { title: 'x' }),
+    ).rejects.toMatchObject({ statusCode: 404 });
+  });
+});
+
+describe('deleteSink', () => {
+  it('soft-deletes the author\'s Sink so it leaves the feed', async () => {
+    const sink = await createSink(userId, { categoryId: discussionId, title: 'bye' });
+    await deleteSink(userId, sink.id);
+
+    const row = await prisma.sink.findUnique({ where: { id: sink.id } });
+    expect(row?.deletedAt).not.toBeNull();
+
+    const { sinks } = await getFeed({});
+    expect(sinks.find((s) => s.id === sink.id)).toBeUndefined();
+  });
+
+  it('rejects deletes from a non-author (403)', async () => {
+    const other = await prisma.user.create({
+      data: { supabaseUserId: 'seed:other', handle: 'Other_User_002' },
+    });
+    const sink = await createSink(userId, { categoryId: discussionId, title: 't' });
+    await expect(deleteSink(other.id, sink.id)).rejects.toMatchObject({
+      statusCode: 403,
+    });
+  });
+
+  it('throws 404 for a missing Sink', async () => {
+    await expect(
+      deleteSink(userId, '00000000-0000-0000-0000-000000000000'),
+    ).rejects.toMatchObject({ statusCode: 404 });
   });
 });

@@ -23,8 +23,16 @@ export interface FeedPage {
   nextCursor: string | null;
 }
 
-export async function getFeedServer(): Promise<FeedPage> {
-  return getJson<FeedPage>('/api/v1/sinks');
+/** First feed page, server-rendered. `sort` picks the tab; `category` filters. */
+export async function getFeedServer(opts?: {
+  sort?: 'latest' | 'top';
+  category?: string;
+}): Promise<FeedPage> {
+  const params = new URLSearchParams();
+  if (opts?.sort && opts.sort !== 'latest') params.set('sort', opts.sort);
+  if (opts?.category) params.set('category', opts.category);
+  const qs = params.toString();
+  return getJson<FeedPage>(`/api/v1/sinks${qs ? `?${qs}` : ''}`);
 }
 
 export async function getCategoriesServer(): Promise<Category[]> {
@@ -65,10 +73,16 @@ export async function getUserProfileServer(
   }
 }
 
-/** A user's own Sinks (post history), newest first — reuses the feed's author filter. */
-export async function getUserSinksServer(handle: string): Promise<Sink[]> {
-  const { sinks } = await getJson<{ sinks: Sink[] }>(
-    `/api/v1/sinks?author=${encodeURIComponent(handle)}`,
-  );
-  return sinks;
+/**
+ * A user's own Sinks (post history) as a paginated feed page, newest first —
+ * reuses the feed's author filter, and supports the same category filter so the
+ * profile can drop in the shared Feed + FeedFilter components.
+ */
+export async function getUserFeedServer(
+  handle: string,
+  opts?: { category?: string },
+): Promise<FeedPage> {
+  const params = new URLSearchParams({ author: handle });
+  if (opts?.category) params.set('category', opts.category);
+  return getJson<FeedPage>(`/api/v1/sinks?${params.toString()}`);
 }

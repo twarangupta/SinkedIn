@@ -26,6 +26,20 @@ export interface CreateSinkInput {
   pollOptions?: string[];
 }
 
+/**
+ * Fields an author may edit after posting. Category and poll options are locked
+ * (polls already carry votes); everything here is text or the image. A field
+ * left `undefined` is untouched; passing `null` clears a nullable field.
+ */
+export interface UpdateSinkInput {
+  title?: string;
+  body?: string | null;
+  imageUrl?: string | null;
+  company?: string | null;
+  conclusion?: Conclusion | null;
+  conclusionOther?: string | null;
+}
+
 /** Fields safe to return for a Sink (author reduced to id + handle). */
 const sinkPublicSelect = {
   id: true,
@@ -184,8 +198,13 @@ async function attachMyState(
 }
 
 /**
- * The feed: most recent non-deleted Sinks, optionally filtered by category slug.
+ * The feed: non-deleted Sinks, optionally filtered by category slug.
  * If userId is passed, each Sink includes the caller's own vote.
+ *
+ * `sort` picks the order:
+ *   - 'latest' (default) → newest first (createdAt desc).
+ *   - 'top'              → highest score first, ties broken by newest, then id
+ *     as a final unique tiebreak so the cursor never skips/duplicates on ties.
  */
 export async function getFeed(options: {
   categorySlug?: string;
@@ -194,8 +213,21 @@ export async function getFeed(options: {
   cursor?: string;
   limit?: number;
   userId?: string;
+  sort?: 'latest' | 'top';
 }) {
-  const { categorySlug, authorHandle, cursor, limit = 10, userId } = options;
+  const {
+    categorySlug,
+    authorHandle,
+    cursor,
+    limit = 10,
+    userId,
+    sort = 'latest',
+  } = options;
+
+  const orderBy: Prisma.SinkOrderByWithRelationInput[] =
+    sort === 'top'
+      ? [{ score: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }]
+      : [{ createdAt: 'desc' }];
 
   // Fetch one extra row: if it comes back, there's another page, and the last
   // row of THIS page becomes the cursor for the next request. Cursor pagination
@@ -209,7 +241,7 @@ export async function getFeed(options: {
       ...(authorHandle ? { user: { handle: authorHandle } } : {}),
     },
     select: sinkPublicSelect,
-    orderBy: { createdAt: 'desc' },
+    orderBy,
     take: limit + 1,
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
   });
@@ -230,6 +262,79 @@ export async function getSinkById(id: string, userId?: string) {
   if (!sink) throw new AppError('Sink not found', 404);
   const [withState] = await attachMyState([sink], userId);
   return withState;
+}
+
+/**
+ * Edit a Sink the caller owns. Only text + image fields change; category and
+ * poll options are locked. company/conclusion honor the (locked) category's
+ * config flags, exactly like createSink. Throws 404 if the Sink is gone and 403
+ * if the caller isn't the author.
+ */
+export async function updateSink(
+  userId: string,
+  sinkId: string,
+  input: UpdateSinkInput,
+) {
+  const existing = await prisma.sink.findFirst({
+    where: { id: sinkId, deletedAt: null },
+    select: {
+      userId: true,
+      category: { select: { showsCompany: true, showsConclusion: true } },
+    },
+  });
+  if (!existing) throw new AppError('Sink not found', 404);
+  if (existing.userId !== userId) {
+    throw new AppError('You can only edit your own Sink', 403);
+  }
+
+  const data: Prisma.SinkUpdateInput = {};
+  if (input.title !== undefined) data.title = input.title;
+  if (input.body !== undefined) data.body = input.body;
+  if (input.imageUrl !== undefined) data.imageUrl = input.imageUrl;
+
+  // Only honor company/conclusion if the category surfaces them (else ignore,
+  // matching createSink's strip-by-flag behavior).
+  if (existing.category.showsCompany && input.company !== undefined) {
+    data.company = input.company;
+  }
+  if (existing.category.showsConclusion && input.conclusion !== undefined) {
+    data.conclusion = input.conclusion;
+    if (input.conclusion === 'OTHER') {
+      const other = input.conclusionOther?.trim();
+      if (!other) {
+        throw new AppError('conclusionOther is required when conclusion is OTHER');
+      }
+      data.conclusionOther = other;
+    } else {
+      // Moving off OTHER (or clearing) drops any stale free-text.
+      data.conclusionOther = null;
+    }
+  }
+
+  return prisma.sink.update({
+    where: { id: sinkId },
+    data,
+    select: sinkPublicSelect,
+  });
+}
+
+/**
+ * Soft-delete a Sink the caller owns (sets deletedAt; never a hard delete, per
+ * the project convention). Throws 404 if gone, 403 if not the author.
+ */
+export async function deleteSink(userId: string, sinkId: string) {
+  const existing = await prisma.sink.findFirst({
+    where: { id: sinkId, deletedAt: null },
+    select: { userId: true },
+  });
+  if (!existing) throw new AppError('Sink not found', 404);
+  if (existing.userId !== userId) {
+    throw new AppError('You can only delete your own Sink', 403);
+  }
+  await prisma.sink.update({
+    where: { id: sinkId },
+    data: { deletedAt: new Date() },
+  });
 }
 
 /** All non-deleted Sink ids + timestamps, for building the sitemap. */
