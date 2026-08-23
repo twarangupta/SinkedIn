@@ -13,6 +13,7 @@ import { PollBlock } from './PollBlock';
 import { Avatar } from './avatar/Avatar';
 import { ExpandableText } from './ExpandableText';
 import { SinkComments } from './SinkComments';
+import { ReportButton } from './ReportButton';
 import { timeAgo } from '../lib/format';
 import type { Sink } from '../types';
 
@@ -63,6 +64,14 @@ export function SinkCard({
         ) : (
           <p className="mb-3 whitespace-pre-wrap text-sm text-ink-2">{sink.body}</p>
         ))}
+      {sink.imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={sink.imageUrl}
+          alt=""
+          className="mb-3 max-h-96 w-full rounded-lg border border-line object-cover"
+        />
+      )}
       {sink.pollOptions.length > 0 && (
         <PollBlock
           sinkId={sink.id}
@@ -73,6 +82,9 @@ export function SinkCard({
 
       <footer className="mt-2 flex items-center gap-4 text-sm text-ink-3">
         <VoteControl kind="sink" id={sink.id} score={sink.score} myVote={sink.myVote} />
+        <span className="ml-auto">
+          <ReportButton targetType="SINK" targetId={sink.id} />
+        </span>
       </footer>
 
       {/* Feed only: read, vote, reply, and add comments inline (no navigation).
