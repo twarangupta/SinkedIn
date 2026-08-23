@@ -19,3 +19,6 @@ build/
 
 # Personal learning notes — NOT committed (kept local for study).
 LEARNING_NOTES.md
+
+# Local-only roadmap audit — kept local, not committed.
+docs/roadmap/audit-2026-08-vision-alignment.md
