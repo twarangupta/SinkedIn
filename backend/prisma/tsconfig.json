@@ -1,0 +1,15 @@
+{
+  // The prisma/*.ts scripts (seed, demo seed/unseed) are run by `tsx`, not by
+  // the production `tsc` build (which is scoped to src/). Without a tsconfig
+  // covering them, the editor's TypeScript service type-checks them in an
+  // ad-hoc context that omits @types/node, so Node globals like `process` show
+  // as errors. This config extends the base and covers this folder only, with
+  // no emit, so the editor resolves them correctly and the build is untouched.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "types": ["node"]
+  },
+  "include": ["**/*.ts"]
+}
