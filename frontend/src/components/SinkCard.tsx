@@ -14,6 +14,7 @@ import { Avatar } from './avatar/Avatar';
 import { ExpandableText } from './ExpandableText';
 import { SinkComments } from './SinkComments';
 import { ReportButton } from './ReportButton';
+import { SinkActions } from './SinkActions';
 import { timeAgo } from '../lib/format';
 import type { Sink } from '../types';
 
@@ -26,7 +27,7 @@ export function SinkCard({
   expandable?: boolean;
 }) {
   return (
-    <article className="rounded-xl border border-line bg-surface p-5">
+    <article className="relative rounded-xl border border-line bg-surface p-5">
       <header className="mb-3 flex items-center gap-3">
         <Link
           href={`/u/${sink.user.handle}`}
@@ -43,6 +44,10 @@ export function SinkCard({
             {sink.user.handle}
           </Link>
           <div className="text-xs text-ink-3">{timeAgo(sink.createdAt)}</div>
+        </div>
+        {/* Author-only edit/delete menu (renders null for everyone else). */}
+        <div className="ml-auto">
+          <SinkActions sink={sink} />
         </div>
       </header>
 
@@ -82,9 +87,6 @@ export function SinkCard({
 
       <footer className="mt-2 flex items-center gap-4 text-sm text-ink-3">
         <VoteControl kind="sink" id={sink.id} score={sink.score} myVote={sink.myVote} />
-        <span className="ml-auto">
-          <ReportButton targetType="SINK" targetId={sink.id} />
-        </span>
       </footer>
 
       {/* Feed only: read, vote, reply, and add comments inline (no navigation).
@@ -96,6 +98,13 @@ export function SinkCard({
           topComment={sink.topComment}
         />
       )}
+
+      {/* Report is pinned to the card's bottom-right corner. Absolute so it
+          sits clear of the vote control without reserving its own row (which
+          was adding a strip of empty vertical space at the bottom). */}
+      <div className="absolute bottom-3 right-3">
+        <ReportButton targetType="SINK" targetId={sink.id} />
+      </div>
     </article>
   );
 }
