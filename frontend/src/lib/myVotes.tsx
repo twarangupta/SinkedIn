@@ -31,6 +31,8 @@ interface MyVotesValue {
   voteByComment: Map<string, Vote>;
   /** sinkId → the poll option id the caller chose. */
   pollVoteBySink: Map<string, string>;
+  /** Ids of the Sinks the caller has bookmarked. */
+  bookmarkedSinks: Set<string>;
   /** True once the fetch has completed, so consumers only hydrate real data. */
   loaded: boolean;
 }
@@ -39,6 +41,7 @@ const EMPTY: MyVotesValue = {
   voteBySink: new Map(),
   voteByComment: new Map(),
   pollVoteBySink: new Map(),
+  bookmarkedSinks: new Set(),
   loaded: false,
 };
 
@@ -59,6 +62,7 @@ export function MyVotesProvider({ children }: { children: ReactNode }) {
       votes: { sinkId: string; value: Vote }[];
       pollVotes: { sinkId: string; pollOptionId: string }[];
       commentVotes: { commentId: string; value: Vote }[];
+      bookmarks?: string[];
     }>('/api/v1/users/me/votes')
       .then((res) => {
         if (cancelled) return;
@@ -70,6 +74,7 @@ export function MyVotesProvider({ children }: { children: ReactNode }) {
           pollVoteBySink: new Map(
             res.pollVotes.map((pv) => [pv.sinkId, pv.pollOptionId]),
           ),
+          bookmarkedSinks: new Set(res.bookmarks ?? []),
           loaded: true,
         });
       })
