@@ -11,7 +11,7 @@ Each phase file also carries a **🔧 Build notes — services & decisions** bri
 | # | File | One line | Status |
 |---|---|---|---|
 | 0 | [phase-0-foundation.md](phase-0-foundation.md) | Deployed empty skeleton — plumbing proven | ✅ done |
-| 1 | [phase-1-core-loop.md](phase-1-core-loop.md) | Post / feed / vote / comment / poll / react — v1 | 🔵 ~90% |
+| 1 | [phase-1-core-loop.md](phase-1-core-loop.md) | Post / feed / vote / comment (+ comment-voting, inline) / poll / react / avatars / handle picker / moderation / image upload | 🟢 code-complete (seeding + feel gate left) |
 | 2 | [phase-2-retention.md](phase-2-retention.md) | Private tracker + personal insights, companion capture extension, Comeback, digest, "not alone", notifications | ⬜ gated |
 | 3 | [phase-3-depth-and-growth.md](phase-3-depth-and-growth.md) | Discovery, follow, **interview-experience SEO hub**, extension **community overlay**, opt-in aggregate insights | ⬜ gated |
 | 4 | [phase-4-trust-and-gamification.md](phase-4-trust-and-gamification.md) | Verified Sinks, Auras, ranks, resilience streak | ⬜ gated |
