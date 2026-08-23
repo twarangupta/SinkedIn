@@ -1,12 +1,13 @@
 /**
- * Button primitive. Two variants: `primary` (indigo CTA) and `ghost` (subtle).
+ * Button primitive. Variants: `primary` (indigo CTA), `ghost` (subtle), and
+ * `danger` (destructive actions like deleting a Sink).
  * Presentational only — all styling via design tokens.
  */
 
 import type { ButtonHTMLAttributes } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'ghost';
+  variant?: 'primary' | 'ghost' | 'danger';
   size?: 'sm' | 'md';
 }
 
@@ -25,6 +26,7 @@ export function Button({
   const variants = {
     primary: 'bg-primary text-white hover:bg-primary-hover',
     ghost: 'bg-transparent text-ink-2 hover:bg-elevated hover:text-ink',
+    danger: 'bg-danger text-white hover:opacity-90',
   };
   return (
     <button
