@@ -88,12 +88,12 @@ export function SinkComments({
   return (
     <div className="mt-3 space-y-2">
       {topComment && (
-        <div className="rounded-lg border border-line bg-elevated/40 p-3">
-          <div className="mb-1 flex items-center gap-2">
+        <div className="rounded-lg bg-elevated/30 px-3 py-2">
+          <div className="mb-0.5 flex items-center gap-2">
             <Avatar
               avatarId={topComment.user.avatarId}
               handle={topComment.user.handle}
-              size={20}
+              size={18}
             />
             <span className="text-xs font-medium text-ink-2">
               {topComment.user.handle}
@@ -102,10 +102,10 @@ export function SinkComments({
               · {timeAgo(topComment.createdAt)}
             </span>
           </div>
-          <p className="line-clamp-2 whitespace-pre-wrap text-sm text-ink-2">
+          <p className="line-clamp-2 whitespace-pre-wrap text-[13px] leading-snug text-ink-2">
             {topComment.body}
           </p>
-          <div className="mt-2 flex items-center gap-3">
+          <div className="mt-1.5 flex items-center gap-3">
             <VoteControl
               kind="comment"
               id={topComment.id}

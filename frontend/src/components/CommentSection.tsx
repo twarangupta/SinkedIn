@@ -154,21 +154,21 @@ function CommentItem({
   const replying = openReplyId === node.id;
   return (
     <div className="space-y-2">
-      <div className="flex gap-3">
+      <div className="flex gap-2.5">
         <Avatar
           avatarId={node.user.avatarId}
           handle={node.user.handle}
-          size={28}
+          size={24}
         />
         <div className="min-w-0 flex-1">
           <div className="text-xs">
             <span className="font-medium text-ink-2">{node.user.handle}</span>
             <span className="text-ink-3"> · {timeAgo(node.createdAt)}</span>
           </div>
-          <p className="mt-0.5 whitespace-pre-wrap text-sm leading-relaxed text-ink">
+          <p className="mt-0.5 whitespace-pre-wrap text-[13px] leading-snug text-ink-2">
             {node.body}
           </p>
-          <div className="mt-1.5 flex items-center gap-3">
+          <div className="mt-1 flex items-center gap-3">
             <VoteControl
               kind="comment"
               id={node.id}
@@ -200,7 +200,7 @@ function CommentItem({
         </div>
       </div>
       {node.replies.length > 0 && (
-        <div className="ml-5 space-y-3 border-l border-line pl-4">
+        <div className="ml-3.5 space-y-2.5 border-l border-line/60 pl-3">
           {node.replies.map((child) => (
             <CommentItem
               key={child.id}
@@ -270,18 +270,24 @@ export function CommentSection({
     <section
       className={
         flat
-          ? 'space-y-4 border-t border-line pt-4'
+          ? 'space-y-3 border-t border-line pt-3'
           : 'space-y-4 rounded-xl border border-line bg-surface p-5'
       }
     >
-      <h2 className="text-base font-semibold text-ink">
+      <h2
+        className={
+          flat
+            ? 'text-xs font-semibold uppercase tracking-wide text-ink-3'
+            : 'text-base font-semibold text-ink'
+        }
+      >
         {comments.length} {comments.length === 1 ? 'Comment' : 'Comments'}
       </h2>
       <Composer sinkId={sinkId} placeholder="Share your take…" onAdded={addComment} />
       {tree.length > 0 ? (
-        <div className="divide-y divide-line border-t border-line">
+        <div className="divide-y divide-line/70 border-t border-line/70">
           {tree.map((node) => (
-            <div key={node.id} className="py-4 first:pt-4 last:pb-0">
+            <div key={node.id} className="py-3 first:pt-3 last:pb-0">
               <CommentItem
                 node={node}
                 sinkId={sinkId}
