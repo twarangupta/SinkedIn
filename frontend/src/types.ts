@@ -74,3 +74,52 @@ export interface Sink {
   /** The poll option id the current user chose (null if none / anonymous). */
   myPollVote: string | null;
 }
+
+/** Private job-tracker (Phase 2). Owner-only — never a public/pseudonymous shape. */
+export type ApplicationStatus =
+  | 'SAVED'
+  | 'APPLIED'
+  | 'OA'
+  | 'INTERVIEW'
+  | 'OFFER'
+  | 'REJECTED'
+  | 'GHOSTED'
+  | 'WITHDRAWN'
+  | 'OTHER';
+
+export type InterviewRoundType =
+  | 'PHONE_SCREEN'
+  | 'ONLINE_ASSESSMENT'
+  | 'TECHNICAL'
+  | 'SYSTEM_DESIGN'
+  | 'BEHAVIORAL'
+  | 'HIRING_MANAGER'
+  | 'HR'
+  | 'OTHER';
+
+export type InterviewRoundResult = 'PENDING' | 'CLEARED' | 'REJECTED';
+
+/** An optional, per-application interview round (add/remove/reorder). */
+export interface InterviewRound {
+  id: string;
+  position: number;
+  type: InterviewRoundType;
+  typeOther: string | null;
+  scheduledAt: string | null;
+  result: InterviewRoundResult;
+  notes: string | null;
+}
+
+export interface Application {
+  id: string;
+  company: string;
+  role: string;
+  status: ApplicationStatus;
+  statusOther: string | null;
+  jobUrl: string | null;
+  appliedAt: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  rounds: InterviewRound[];
+}
