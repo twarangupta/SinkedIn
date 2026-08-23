@@ -14,10 +14,12 @@ import { validateBody } from '../middleware/validate.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import {
   createSinkHandler,
+  deleteSinkHandler,
   getSinkHandler,
   listSinksHandler,
   pollVoteHandler,
   unvoteHandler,
+  updateSinkHandler,
   voteHandler,
 } from '../controllers/sinks.controller.js';
 import {
@@ -36,6 +38,20 @@ const createSinkSchema = z.object({
   conclusionOther: z.string().max(100).optional(),
   pollOptions: z.array(z.string().min(1).max(100)).min(2).max(6).optional(),
 });
+
+// Edit body: every field optional (patch semantics). null clears a nullable
+// field; title, when present, must be non-empty. Category + poll options are
+// intentionally absent — they're locked after posting.
+const updateSinkSchema = z
+  .object({
+    title: z.string().min(1).max(200).optional(),
+    body: z.string().max(5000).nullable().optional(),
+    imageUrl: z.string().url().max(2048).nullable().optional(),
+    company: z.string().max(100).nullable().optional(),
+    conclusion: z.nativeEnum(Conclusion).nullable().optional(),
+    conclusionOther: z.string().max(100).nullable().optional(),
+  })
+  .strict();
 
 const voteSchema = z.object({ direction: z.enum(['UP', 'DOWN']) });
 
@@ -61,6 +77,16 @@ router.post(
   validateBody(createSinkSchema),
   createSinkHandler,
 );
+// Edit / delete (auth required; author-only is enforced in the service).
+router.patch(
+  '/:id',
+  requireAuth,
+  rateLimit({ windowMs: 60_000, max: 20 }),
+  validateBody(updateSinkSchema),
+  updateSinkHandler,
+);
+router.delete('/:id', requireAuth, deleteSinkHandler);
+
 router.post('/:id/vote', requireAuth, validateBody(voteSchema), voteHandler);
 router.delete('/:id/vote', requireAuth, unvoteHandler);
 router.post(
