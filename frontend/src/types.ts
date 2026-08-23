@@ -16,6 +16,8 @@ export interface PublicUser {
   id: string;
   handle: string;
   avatarId: string;
+  /** Present on the caller's own record (GET /users/me); drives first-run onboarding. */
+  handleChosen?: boolean;
 }
 
 /** A public profile (handle + join date) from GET /users/:handle. */
@@ -55,6 +57,7 @@ export interface Sink {
   id: string;
   title: string;
   body: string | null;
+  imageUrl: string | null;
   company: string | null;
   conclusion: string | null;
   conclusionOther: string | null;
