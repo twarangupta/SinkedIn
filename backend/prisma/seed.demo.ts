@@ -1,25 +1,33 @@
 /**
- * Seed DEMO (removable) data — sample users + Sinks so the feed looks alive
- * during development. See prisma/demo-data.ts for the marker / removal design.
+ * Seed DEMO (removable) data — realistic users + Sinks + comments + votes +
+ * saves so the feed looks alive during development. See prisma/demo-data.ts for
+ * the marker / removal design and the content-integrity note.
  *
  * Idempotent: purges any existing demo data first, then recreates it, so
  * re-running never duplicates. Requires categories to already exist
  * (run `npm run db:seed` first).
  *
- * Run with:  npm run db:seed:demo
+ * Run with:   npm run db:seed:demo
  * Remove with: npm run db:unseed:demo
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, VoteValue } from '@prisma/client';
 import { demoSinks, demoUsers, purgeDemoData } from './demo-data.js';
 
 const prisma = new PrismaClient();
+const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
+
+/** Rotate a copy of the array left by `offset` (for spreading voters around). */
+function rotated<T>(arr: T[], offset: number): T[] {
+  const n = arr.length;
+  const k = ((offset % n) + n) % n;
+  return [...arr.slice(k), ...arr.slice(0, k)];
+}
 
 async function main() {
-  // Start clean so re-runs don't stack duplicates.
-  await purgeDemoData(prisma);
+  await purgeDemoData(prisma); // start clean so re-runs never stack
 
-  // Categories must exist first (demo Sinks reference them by slug).
   const categories = await prisma.category.findMany({
     select: { id: true, slug: true },
   });
@@ -30,45 +38,113 @@ async function main() {
   }
   const categoryIdBySlug = new Map(categories.map((c) => [c.slug, c.id]));
 
-  // Create the demo users and keep their generated ids by index.
-  const createdUserIds: string[] = [];
+  // Create the demo users, keeping their generated ids by index.
+  const userIds: string[] = [];
   for (const user of demoUsers) {
     const created = await prisma.user.create({ data: user });
-    createdUserIds.push(created.id);
+    userIds.push(created.id);
   }
+  const n = userIds.length;
+  const now = Date.now();
 
-  // Create each demo Sink, wiring author + category, plus poll options if any.
-  for (const sink of demoSinks) {
+  let totalVotes = 0;
+  let totalComments = 0;
+  let totalBookmarks = 0;
+
+  for (let i = 0; i < demoSinks.length; i++) {
+    const sink = demoSinks[i];
     const categoryId = categoryIdBySlug.get(sink.categorySlug);
     if (!categoryId) {
       throw new Error(`Demo Sink references unknown category: ${sink.categorySlug}`);
     }
 
-    await prisma.sink.create({
+    const sinkCreatedAt = new Date(now - sink.daysAgo * DAY);
+    const buoys = Math.min(sink.buoys ?? 0, n);
+    const anchors = Math.min(sink.anchors ?? 0, Math.max(0, n - buoys));
+
+    const created = await prisma.sink.create({
       data: {
-        userId: createdUserIds[sink.authorIndex],
+        userId: userIds[sink.authorIndex],
         categoryId,
         title: sink.title,
         body: sink.body,
         company: sink.company,
         conclusion: sink.conclusion,
-        // Attach poll options (nested create) when the demo Sink defines them.
+        score: buoys - anchors, // cached score matches the votes we create
+        createdAt: sinkCreatedAt,
         pollOptions: sink.poll
-          ? {
-              create: sink.poll.map((label, index) => ({
-                label,
-                position: index,
-              })),
-            }
+          ? { create: sink.poll.map((label, index) => ({ label, position: index })) }
           : undefined,
       },
+      select: { id: true },
     });
+
+    // --- Votes: distinct users, rotated per-sink so voters vary across the feed.
+    const voters = rotated(userIds, i * 3);
+    const buoyUsers = voters.slice(0, buoys);
+    const anchorUsers = voters.slice(buoys, buoys + anchors);
+    for (const uid of buoyUsers) {
+      await prisma.vote.create({
+        data: { sinkId: created.id, userId: uid, value: VoteValue.BUOY },
+      });
+    }
+    for (const uid of anchorUsers) {
+      await prisma.vote.create({
+        data: { sinkId: created.id, userId: uid, value: VoteValue.ANCHOR },
+      });
+    }
+    totalVotes += buoyUsers.length + anchorUsers.length;
+
+    // --- Comments (+ one level of replies). createdAt clamped to the past.
+    for (const c of sink.comments ?? []) {
+      const cAt = new Date(
+        Math.min(sinkCreatedAt.getTime() + (c.hoursAfter ?? 5) * HOUR, now - HOUR),
+      );
+      const parent = await prisma.comment.create({
+        data: {
+          sinkId: created.id,
+          userId: userIds[c.authorIndex],
+          body: c.body,
+          score: c.score ?? 0,
+          createdAt: cAt,
+        },
+        select: { id: true, createdAt: true },
+      });
+      totalComments += 1;
+      for (const r of c.replies ?? []) {
+        const rAt = new Date(
+          Math.min(parent.createdAt.getTime() + (r.hoursAfter ?? 3) * HOUR, now - HOUR / 2),
+        );
+        await prisma.comment.create({
+          data: {
+            sinkId: created.id,
+            userId: userIds[r.authorIndex],
+            body: r.body,
+            parentId: parent.id,
+            score: r.score ?? 0,
+            createdAt: rAt,
+          },
+        });
+        totalComments += 1;
+      }
+    }
+
+    // --- Saves: distinct users bookmark the Sink (rotated so it is not always
+    // the same handful).
+    const saves = Math.min(sink.saves ?? 0, n);
+    const savers = rotated(userIds, i * 5 + 1).slice(0, saves);
+    for (const uid of savers) {
+      await prisma.bookmark.create({ data: { sinkId: created.id, userId: uid } });
+    }
+    totalBookmarks += savers.length;
   }
 
   const sinkCount = await prisma.sink.count();
   // eslint-disable-next-line no-console
   console.log(
-    `Seeded demo data: ${createdUserIds.length} users, ${demoSinks.length} sinks. Total sinks in table: ${sinkCount}.`,
+    `Seeded demo data: ${userIds.length} users, ${demoSinks.length} sinks, ` +
+      `${totalComments} comments, ${totalVotes} votes, ${totalBookmarks} saves. ` +
+      `Total sinks in table: ${sinkCount}.`,
   );
 }
 
