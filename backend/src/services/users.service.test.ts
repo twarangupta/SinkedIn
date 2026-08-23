@@ -9,9 +9,13 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '../lib/prisma.js';
 import {
+  checkHandleAvailability,
   findOrCreateUser,
   generateHandleCandidate,
+  generateHandleSuggestions,
   getUserByHandle,
+  markOnboarded,
+  setMyHandle,
   updateMyAvatar,
 } from './users.service.js';
 import {
@@ -78,6 +82,7 @@ describe('findOrCreateUser', () => {
       'avatarId',
       'createdAt',
       'handle',
+      'handleChosen',
       'id',
     ]);
     expect(user).not.toHaveProperty('supabaseUserId');
@@ -110,5 +115,72 @@ describe('getUserByHandle', () => {
 
   it('returns null for a handle that does not exist', async () => {
     expect(await getUserByHandle('Nobody_Here_999')).toBeNull();
+  });
+});
+
+describe('checkHandleAvailability', () => {
+  it('accepts a valid, free handle', async () => {
+    expect(await checkHandleAvailability('Salty_Otter_12')).toEqual({
+      available: true,
+    });
+  });
+
+  it('rejects a bad format', async () => {
+    const res = await checkHandleAvailability('no spaces!');
+    expect(res.available).toBe(false);
+    expect(res.reason).toMatch(/letters, numbers/i);
+  });
+
+  it('rejects reserved and profane handles', async () => {
+    expect((await checkHandleAvailability('the_admin_1')).available).toBe(false);
+    expect((await checkHandleAvailability('shithead99')).available).toBe(false);
+  });
+
+  it('rejects a handle already taken', async () => {
+    const user = await findOrCreateUser('supabase-taken');
+    const res = await checkHandleAvailability(user.handle);
+    expect(res.available).toBe(false);
+    expect(res.reason).toMatch(/taken/i);
+  });
+});
+
+describe('generateHandleSuggestions', () => {
+  it('returns the requested number of valid, unused handles', async () => {
+    const suggestions = await generateHandleSuggestions(4);
+    expect(suggestions).toHaveLength(4);
+    for (const s of suggestions) {
+      expect(s).toMatch(/^[A-Za-z]+_[A-Za-z]+_\d{3}$/);
+      expect((await checkHandleAvailability(s)).available).toBe(true);
+    }
+  });
+});
+
+describe('setMyHandle', () => {
+  it('sets a valid handle, marks onboarding done, returns public projection', async () => {
+    const user = await findOrCreateUser('supabase-sethandle');
+    expect(user.handleChosen).toBe(false); // fresh users start un-onboarded
+    const updated = await setMyHandle(user.id, 'Grumpy_Barnacle_7');
+    expect(updated.handle).toBe('Grumpy_Barnacle_7');
+    expect(updated.handleChosen).toBe(true);
+    expect(updated).not.toHaveProperty('supabaseUserId');
+  });
+
+  it('markOnboarded completes onboarding without changing the handle', async () => {
+    const user = await findOrCreateUser('supabase-skip');
+    const updated = await markOnboarded(user.id);
+    expect(updated.handle).toBe(user.handle);
+    expect(updated.handleChosen).toBe(true);
+  });
+
+  it('rejects an invalid/blocklisted handle', async () => {
+    const user = await findOrCreateUser('supabase-badhandle');
+    await expect(setMyHandle(user.id, 'x')).rejects.toThrow();
+    await expect(setMyHandle(user.id, 'official_admin')).rejects.toThrow();
+  });
+
+  it('rejects a handle already taken by someone else', async () => {
+    const a = await findOrCreateUser('supabase-a');
+    const b = await findOrCreateUser('supabase-b');
+    await expect(setMyHandle(b.id, a.handle)).rejects.toThrow(/taken/i);
   });
 });

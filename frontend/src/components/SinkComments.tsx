@@ -34,7 +34,7 @@ export function SinkComments({
   const [open, setOpen] = useState(false);
   const [comments, setComments] = useState<Comment[] | null>(null);
   const [loading, setLoading] = useState(false);
-  const [focusCompose, setFocusCompose] = useState(false);
+  const [replyToId, setReplyToId] = useState<string>();
 
   if (commentCount === 0) {
     return (
@@ -44,8 +44,8 @@ export function SinkComments({
     );
   }
 
-  const expand = async (focus = false) => {
-    setFocusCompose(focus);
+  const expand = async (replyTo?: string) => {
+    setReplyToId(replyTo);
     setOpen(true);
     if (comments === null && !loading) {
       setLoading(true);
@@ -72,7 +72,7 @@ export function SinkComments({
             sinkId={sinkId}
             comments={comments}
             flat
-            autoFocusCompose={focusCompose}
+            replyToId={replyToId}
           />
         )}
         <button
@@ -114,7 +114,7 @@ export function SinkComments({
               size="sm"
             />
             <button
-              onClick={() => expand(true)}
+              onClick={() => expand(topComment.id)}
               className="text-xs font-medium text-ink-3 hover:text-primary"
             >
               Reply
@@ -123,7 +123,7 @@ export function SinkComments({
         </div>
       )}
       <button
-        onClick={() => expand(false)}
+        onClick={() => expand()}
         className="text-sm font-medium text-ink-3 hover:text-primary"
       >
         View all {commentCount} {commentCount === 1 ? 'comment' : 'comments'}

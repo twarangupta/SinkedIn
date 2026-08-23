@@ -15,6 +15,7 @@ import { useAuth } from '../lib/auth';
 import { useAuthModal } from '../lib/authModal';
 import { useMe } from '../lib/me';
 import { apiFetch } from '../lib/api';
+import { uploadSinkImage } from '../lib/uploadImage';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Avatar } from './avatar/Avatar';
@@ -37,6 +38,8 @@ export function SinkComposer({ categories }: { categories: Category[] }) {
   const [conclusion, setConclusion] = useState('');
   const [conclusionOther, setConclusionOther] = useState('');
   const [pollOptions, setPollOptions] = useState(['', '']);
+  const [imageUrl, setImageUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
@@ -64,7 +67,23 @@ export function SinkComposer({ categories }: { categories: Category[] }) {
     setConclusion('');
     setConclusionOther('');
     setPollOptions(['', '']);
+    setImageUrl('');
     setError(null);
+  };
+
+  const onPickImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-picking the same file
+    if (!file) return;
+    setError(null);
+    setUploading(true);
+    try {
+      setImageUrl(await uploadSinkImage(file));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const startComposing = () => {
@@ -85,6 +104,7 @@ export function SinkComposer({ categories }: { categories: Category[] }) {
     try {
       const payload: Record<string, unknown> = { categoryId, title: title.trim() };
       if (body.trim()) payload.body = body.trim();
+      if (imageUrl) payload.imageUrl = imageUrl;
       if (category?.showsCompany && company.trim()) payload.company = company.trim();
       if (category?.showsConclusion && conclusion) {
         payload.conclusion = conclusion;
@@ -181,6 +201,34 @@ export function SinkComposer({ categories }: { categories: Category[] }) {
         className="w-full rounded-lg border border-line bg-elevated px-3 py-2 text-sm text-ink outline-none focus:border-primary"
       />
 
+      {imageUrl ? (
+        <div className="relative w-fit">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imageUrl}
+            alt="Attachment preview"
+            className="max-h-56 rounded-lg border border-line"
+          />
+          <button
+            type="button"
+            onClick={() => setImageUrl('')}
+            className="absolute right-1.5 top-1.5 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white hover:bg-black/80"
+          >
+            Remove
+          </button>
+        </div>
+      ) : (
+        <label className="inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium text-ink-3 hover:text-primary">
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+            onChange={onPickImage}
+            className="hidden"
+          />
+          {uploading ? 'Uploading…' : '+ Add image'}
+        </label>
+      )}
+
       {category?.showsCompany && (
         <Input
           placeholder="Company (optional)"
@@ -248,7 +296,7 @@ export function SinkComposer({ categories }: { categories: Category[] }) {
         <Button
           size="sm"
           onClick={submit}
-          disabled={busy || !categoryId || !title.trim()}
+          disabled={busy || uploading || !categoryId || !title.trim()}
         >
           {busy ? 'Posting…' : '+ New Sink'}
         </Button>

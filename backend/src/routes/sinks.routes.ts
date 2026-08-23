@@ -11,6 +11,7 @@ import { Conclusion } from '@prisma/client';
 import { requireAuth } from '../middleware/auth.js';
 import { optionalAuth } from '../middleware/optionalAuth.js';
 import { validateBody } from '../middleware/validate.js';
+import { rateLimit } from '../middleware/rateLimit.js';
 import {
   createSinkHandler,
   getSinkHandler,
@@ -28,6 +29,8 @@ const createSinkSchema = z.object({
   categoryId: z.string().uuid(),
   title: z.string().min(1).max(200),
   body: z.string().max(5000).optional(),
+  // A plain image URL (from the client upload). Provider-agnostic on purpose.
+  imageUrl: z.string().url().max(2048).optional(),
   company: z.string().max(100).optional(),
   conclusion: z.nativeEnum(Conclusion).optional(),
   conclusionOther: z.string().max(100).optional(),
@@ -51,7 +54,13 @@ router.get('/:id', optionalAuth, getSinkHandler);
 router.get('/:id/comments', listCommentsHandler);
 
 // Writes / votes / comments (auth required).
-router.post('/', requireAuth, validateBody(createSinkSchema), createSinkHandler);
+router.post(
+  '/',
+  requireAuth,
+  rateLimit({ windowMs: 60_000, max: 8 }),
+  validateBody(createSinkSchema),
+  createSinkHandler,
+);
 router.post('/:id/vote', requireAuth, validateBody(voteSchema), voteHandler);
 router.delete('/:id/vote', requireAuth, unvoteHandler);
 router.post(
@@ -63,6 +72,7 @@ router.post(
 router.post(
   '/:id/comments',
   requireAuth,
+  rateLimit({ windowMs: 60_000, max: 20 }),
   validateBody(createCommentSchema),
   createCommentHandler,
 );

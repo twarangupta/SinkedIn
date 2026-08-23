@@ -27,12 +27,14 @@ model User {
   supabaseUserId String     @unique // Supabase Auth user id, never exposed publicly
   handle         String     @unique // e.g. "Rejected_Raccoon_402" — public-facing
   avatarId       String     @default("pufferfish") // ocean-creature avatar id (see lib/avatars.ts); public, no PII. Set deterministically from handle on signup, user-changeable.
+  handleChosen   Boolean    @default(false) // false until the user picks/keeps a handle in the first-run onboarding
   createdAt      DateTime   @default(now())
   sinks          Sink[]
   votes          Vote[]
   comments       Comment[]
   commentVotes   CommentVote[]
   pollVotes      PollVote[]
+  reports        Report[]
 }
 
 // A Sink is a Reddit-style post: always a title + body, categorized by a category.
@@ -47,6 +49,7 @@ model Sink {
   category   Category @relation(fields: [categoryId], references: [id])
   title      String // every Sink has a title
   body       String?  @db.Text // the main text (optional for e.g. pure Poll)
+  imageUrl   String? // optional attached image (a plain URL; storage provider is swappable)
 
   // --- optional category-conditional fields (nullable; only some categories use them) ---
   company         String? // shown for Interview Experience, Rejection, Ghosted, etc.
@@ -131,6 +134,35 @@ model PollVote {
   // NOTE: enforce "one vote per poll (not per option)" in the service layer.
 
   @@unique([pollOptionId, userId])
+}
+
+// --- Moderation (Phase 1): users report; hiding is a manual soft-delete for
+// now (the full review console is Phase 3). targetType + targetId is a light
+// polymorphic pointer at a Sink or Comment (no FK — reports outlive targets). ---
+enum ReportTargetType {
+  SINK
+  COMMENT
+}
+
+enum ReportStatus {
+  OPEN
+  ACTIONED
+  DISMISSED
+}
+
+model Report {
+  id         String           @id @default(uuid())
+  targetType ReportTargetType
+  targetId   String
+  reason     String? // optional free-text detail from the reporter
+  reporterId String
+  reporter   User             @relation(fields: [reporterId], references: [id])
+  status     ReportStatus     @default(OPEN)
+  createdAt  DateTime         @default(now())
+
+  @@unique([targetType, targetId, reporterId]) // one report per user per target
+  @@index([status])
+  @@index([targetType, targetId])
 }
 
 // --- Comments (Phase 1): Reddit needs them. Threaded via optional parentId. ---

@@ -18,6 +18,7 @@ import { apiFetch } from '../lib/api';
 import { timeAgo } from '../lib/format';
 import { Avatar } from './avatar/Avatar';
 import { VoteControl } from './VoteControl';
+import { ReportButton } from './ReportButton';
 import { Button } from './ui/Button';
 import type { Comment } from '../types';
 
@@ -139,12 +140,18 @@ function CommentItem({
   node,
   sinkId,
   onAdded,
+  openReplyId,
+  onToggleReply,
 }: {
   node: CommentNode;
   sinkId: string;
   onAdded: (comment: Comment) => void;
+  /** Id of the single comment whose reply box is currently open (or null). */
+  openReplyId: string | null;
+  /** Open this comment's reply box (closing any other), or close if already open. */
+  onToggleReply: (id: string) => void;
 }) {
-  const [replying, setReplying] = useState(false);
+  const replying = openReplyId === node.id;
   return (
     <div className="space-y-2">
       <div className="flex gap-3">
@@ -170,20 +177,23 @@ function CommentItem({
               size="sm"
             />
             <button
-              onClick={() => setReplying((v) => !v)}
+              data-reply-toggle="true"
+              onClick={() => onToggleReply(node.id)}
               className="text-xs font-medium text-ink-3 hover:text-primary"
             >
               {replying ? 'Cancel' : 'Reply'}
             </button>
+            <ReportButton targetType="COMMENT" targetId={node.id} />
           </div>
           {replying && (
-            <div className="mt-2">
+            <div className="mt-2" data-reply-box="true">
               <Composer
                 sinkId={sinkId}
                 parentId={node.id}
                 placeholder="Write a reply…"
-                onDone={() => setReplying(false)}
+                onDone={() => onToggleReply(node.id)}
                 onAdded={onAdded}
+                autoFocus
               />
             </div>
           )}
@@ -197,6 +207,8 @@ function CommentItem({
               node={child}
               sinkId={sinkId}
               onAdded={onAdded}
+              openReplyId={openReplyId}
+              onToggleReply={onToggleReply}
             />
           ))}
         </div>
@@ -209,21 +221,43 @@ export function CommentSection({
   sinkId,
   comments: initialComments,
   flat = false,
-  autoFocusCompose = false,
+  replyToId,
 }: {
   sinkId: string;
   comments: Comment[];
   /** Inline-in-feed variant: drop the card chrome, separate with a top rule. */
   flat?: boolean;
-  /** Focus the top-level composer on mount (used by the feed "Reply" button). */
-  autoFocusCompose?: boolean;
+  /** Open (and focus) the reply box under this comment on mount (feed "Reply"). */
+  replyToId?: string;
 }) {
   const [comments, setComments] = useState(initialComments);
+  // Only ONE reply box open at a time (opening another closes the first).
+  const [openReplyId, setOpenReplyId] = useState<string | null>(
+    replyToId ?? null,
+  );
 
   // Reflect a fresh server render (e.g. navigating back to the Sink).
   useEffect(() => {
     setComments(initialComments);
   }, [initialComments]);
+
+  const toggleReply = (id: string) =>
+    setOpenReplyId((cur) => (cur === id ? null : id));
+
+  // Close the open reply box when clicking anywhere outside a reply box or a
+  // reply toggle button (data attributes mark those so the click is ignored).
+  useEffect(() => {
+    if (!openReplyId) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t?.closest('[data-reply-box]') || t?.closest('[data-reply-toggle]')) {
+        return;
+      }
+      setOpenReplyId(null);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [openReplyId]);
 
   // Append a newly-posted comment (top-level or reply), ignoring dupes.
   const addComment = (comment: Comment) =>
@@ -243,17 +277,18 @@ export function CommentSection({
       <h2 className="text-base font-semibold text-ink">
         {comments.length} {comments.length === 1 ? 'Comment' : 'Comments'}
       </h2>
-      <Composer
-        sinkId={sinkId}
-        placeholder="Share your take…"
-        onAdded={addComment}
-        autoFocus={autoFocusCompose}
-      />
+      <Composer sinkId={sinkId} placeholder="Share your take…" onAdded={addComment} />
       {tree.length > 0 ? (
         <div className="divide-y divide-line border-t border-line">
           {tree.map((node) => (
             <div key={node.id} className="py-4 first:pt-4 last:pb-0">
-              <CommentItem node={node} sinkId={sinkId} onAdded={addComment} />
+              <CommentItem
+                node={node}
+                sinkId={sinkId}
+                onAdded={addComment}
+                openReplyId={openReplyId}
+                onToggleReply={toggleReply}
+              />
             </div>
           ))}
         </div>

@@ -16,6 +16,7 @@ import { Header } from '../../components/layout/Header';
 import { Avatar } from '../../components/avatar/Avatar';
 import { AVATAR_CATALOG, avatarName } from '../../components/avatar/catalog';
 import { PageHeader } from '../../components/PageHeader';
+import { HandlePicker } from '../../components/HandlePicker';
 import { Button } from '../../components/ui/Button';
 
 export default function SettingsPage() {
@@ -63,9 +64,11 @@ export default function SettingsPage() {
             <Button onClick={open}>Sign in</Button>
           </div>
         ) : (
-          <section className="space-y-4 rounded-xl border border-line bg-surface p-5">
-            <div className="flex items-center gap-3">
-              <Avatar avatarId={selected} handle={me?.handle ?? '::'} size={56} />
+          <>
+            <HandlePicker />
+            <section className="space-y-4 rounded-xl border border-line bg-surface p-5">
+              <div className="flex items-center gap-3">
+                <Avatar avatarId={selected} handle={me?.handle ?? '::'} size={56} />
               <div>
                 <div className="text-sm font-medium">{me?.handle ?? '…'}</div>
                 <div className="text-xs text-ink-3">
@@ -122,7 +125,8 @@ export default function SettingsPage() {
                 {saving ? 'Saving…' : 'Save'}
               </Button>
             </div>
-          </section>
+            </section>
+          </>
         )}
       </div>
     </div>
