@@ -14,11 +14,11 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'SinkedIn',
   description:
-    'The honest, darkly-funny side of work and the job market. Bad bosses, burnout, rejections, wins, posted anonymously.',
+    'The anonymous career community and free job search tracker for applications, interviews, offers and rejections, with a Chrome extension to track jobs from across the web.',
   openGraph: {
     title: 'SinkedIn',
     description:
-      'The honest, darkly-funny side of work and the job market, posted anonymously.',
+      'An anonymous career community with a free job tracker and Chrome extension to track jobs, applications, interviews, offers and rejections.',
     type: 'website',
   },
 };
