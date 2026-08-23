@@ -32,6 +32,15 @@ export function avatarColor(handle: string): string {
   return AVATAR_TINTS[hash % AVATAR_TINTS.length];
 }
 
+/** Compact absolute date, e.g. "23 Aug". Empty string when there's no date. */
+export function shortDate(iso: string | null): string {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
 /** Compact relative time, e.g. "just now", "5m ago", "3h ago", "2d ago". */
 export function timeAgo(iso: string): string {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
