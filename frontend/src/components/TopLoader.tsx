@@ -7,7 +7,7 @@
  * actually changes. Self-contained: no dependency, no NProgress.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 
 export function TopLoader() {
@@ -19,14 +19,14 @@ export function TopLoader() {
   const doneTimer = useRef<number | null>(null);
   const first = useRef(true);
 
-  const clearTimers = () => {
+  const clearTimers = useCallback(() => {
     if (crawl.current) window.clearInterval(crawl.current);
     if (doneTimer.current) window.clearTimeout(doneTimer.current);
     crawl.current = null;
     doneTimer.current = null;
-  };
+  }, []);
 
-  const start = () => {
+  const start = useCallback(() => {
     clearTimers();
     setVisible(true);
     setWidth(8);
@@ -34,16 +34,16 @@ export function TopLoader() {
     crawl.current = window.setInterval(() => {
       setWidth((w) => (w < 90 ? w + Math.max(0.5, (90 - w) * 0.08) : w));
     }, 200);
-  };
+  }, [clearTimers]);
 
-  const done = () => {
+  const done = useCallback(() => {
     clearTimers();
     setWidth(100);
     doneTimer.current = window.setTimeout(() => {
       setVisible(false);
       window.setTimeout(() => setWidth(0), 250); // reset once faded out
     }, 250);
-  };
+  }, [clearTimers]);
 
   // Start on any left-click of an internal link.
   useEffect(() => {
@@ -74,7 +74,7 @@ export function TopLoader() {
     };
     document.addEventListener('click', onClick);
     return () => document.removeEventListener('click', onClick);
-  }, [pathname]);
+  }, [pathname, start]);
 
   // Complete when the route finishes changing (skip the initial mount).
   useEffect(() => {
@@ -84,8 +84,7 @@ export function TopLoader() {
     }
     done();
     return clearTimers;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, searchParams]);
+  }, [pathname, searchParams, done, clearTimers]);
 
   return (
     <div
