@@ -2,9 +2,10 @@
 
 /**
  * ProfileMenu — the signed-in user's avatar + handle in the header, which opens
- * a small dropdown (View profile, Settings, Sign out). Closes on outside click,
- * Escape, or selecting an item. This is the single auth control in the navbar —
- * there is no separate Sign out button.
+ * a small dropdown (View profile, Job Tracker, Saved, Settings, Sign out).
+ * Closes on outside click, Escape, or selecting an item. This is the single auth
+ * control in the navbar, and on mobile it's the entry point to the tracker
+ * (the sidebar nav is desktop-only).
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -64,6 +65,14 @@ export function ProfileMenu({ me }: { me: PublicUser }) {
             className={itemCls}
           >
             View profile
+          </Link>
+          <Link
+            href="/tracker/app"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className={itemCls}
+          >
+            Job Tracker
           </Link>
           <Link
             href="/saved"
