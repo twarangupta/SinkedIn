@@ -8,7 +8,7 @@
  * modal. Self-contained so the surrounding SinkCard can stay a server component.
  */
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../lib/auth';
 import { useAuthModal } from '../lib/authModal';
@@ -26,6 +26,19 @@ export function AddFirstComment({ sinkId }: { sinkId: string }) {
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
   const [posted, setPosted] = useState<Comment | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Close the composer when clicking outside it (consistent with reply boxes).
+  useEffect(() => {
+    if (!expanded) return;
+    const onDown = (e: MouseEvent) => {
+      if (formRef.current && !formRef.current.contains(e.target as Node)) {
+        setExpanded(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [expanded]);
 
   // Once posted, show the new comment inline (same look as the top-comment block).
   if (posted) {
@@ -86,6 +99,7 @@ export function AddFirstComment({ sinkId }: { sinkId: string }) {
 
   return (
     <form
+      ref={formRef}
       onSubmit={submit}
       className="rounded-lg border border-line bg-elevated/40 px-3 py-2 transition-colors focus-within:border-primary/60"
     >
