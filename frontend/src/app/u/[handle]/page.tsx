@@ -8,11 +8,16 @@
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getUserProfileServer, getUserSinksServer } from '@/lib/server-api';
+import {
+  getCategoriesServer,
+  getUserFeedServer,
+  getUserProfileServer,
+} from '@/lib/server-api';
 import { Header } from '@/components/layout/Header';
 import { Avatar } from '@/components/avatar/Avatar';
 import { PageHeader } from '@/components/PageHeader';
-import { SinkCard } from '@/components/SinkCard';
+import { Feed } from '@/components/Feed';
+import { FeedFilter } from '@/components/FeedFilter';
 
 export async function generateMetadata({
   params,
@@ -35,12 +40,21 @@ function joinedLabel(iso: string): string {
 
 export default async function ProfilePage({
   params,
+  searchParams,
 }: {
   params: { handle: string };
+  searchParams: { category?: string };
 }) {
   const user = await getUserProfileServer(params.handle);
   if (!user) notFound();
-  const sinks = await getUserSinksServer(user.handle);
+
+  const category =
+    typeof searchParams.category === 'string' ? searchParams.category : undefined;
+  const [feed, categories] = await Promise.all([
+    getUserFeedServer(user.handle, { category }),
+    getCategoriesServer(),
+  ]);
+  const basePath = `/u/${user.handle}`;
 
   return (
     <div className="min-h-screen">
@@ -52,24 +66,36 @@ export default async function ProfilePage({
           <Avatar avatarId={user.avatarId} handle={user.handle} size={56} />
           <div className="min-w-0">
             <div className="truncate font-display text-xl font-medium">{user.handle}</div>
-            <div className="text-sm text-ink-3">
-              Joined {joinedLabel(user.createdAt)} · {sinks.length}{' '}
-              {sinks.length === 1 ? 'Sink' : 'Sinks'}
-            </div>
+            <div className="text-sm text-ink-3">Joined {joinedLabel(user.createdAt)}</div>
           </div>
         </header>
 
-        {sinks.length === 0 ? (
-          <p className="py-8 text-center text-ink-3">
-            Hasn&apos;t made a splash yet.
-          </p>
-        ) : (
-          <div className="space-y-4">
-            {sinks.map((sink) => (
-              <SinkCard key={sink.id} sink={sink} />
-            ))}
+        {/* Post history: same infinite-scroll Feed + category filter as home,
+            scoped to this author. The label hugs the feed (space-y-2); the outer
+            space-y-4 keeps a single clean gap from the profile header above. */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-medium text-ink">Sinks</span>
+            <FeedFilter
+              categories={categories}
+              activeSlug={category}
+              basePath={basePath}
+            />
           </div>
-        )}
+
+          <Feed
+            key={`${user.handle}:${category ?? 'all'}`}
+            initialSinks={feed.sinks}
+            initialNextCursor={feed.nextCursor}
+            author={user.handle}
+            category={category}
+            emptyMessage={
+              category
+                ? 'No Sinks in this category yet.'
+                : "Hasn't made a splash yet."
+            }
+          />
+        </div>
       </div>
     </div>
   );
