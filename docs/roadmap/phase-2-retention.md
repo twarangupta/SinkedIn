@@ -6,6 +6,25 @@
 >
 > **Entry gate:** Phase 1 loop **proven satisfying** (the qualitative gate passed with real users).
 
+> **⚠️ Status (2026-08-24):** Phase 2 was **started early**, before the Phase-1 qualitative gate was formally passed (owner's call). The **private job tracker is partially built** and running on dev. See the changelog below.
+
+## 🔨 Build progress + changelog
+*Updated 2026-08-24 — what is actually built, and what changed vs the original Phase-2 plan above.*
+
+**Built (dev):**
+- **Tracker core** — `Application` model (owner-only, `requireAuth` everywhere, soft-deleted, never in a public select). CRUD at `/api/v1/applications`. A **List view** and a **Board (kanban)** with drag-between-columns, add/edit/delete, inline status change. Public SEO **landing at `/tracker`**; the private app at **`/tracker/app`** (noindex). Sidebar "Your Tracker" per-status counts that deep-link to the filtered app.
+- **Capture-now data model (from the tracker audit)** — added **`Company`** (centralized, deduped by `normalizedName`; the tracker auto-resolves typed company names into it) + `Application.companyId`, and **`ApplicationEvent`** (status-transition history, logged on create + every status change). These are the two "lossy if not captured from day one" items.
+
+**Changed vs the original Phase-2 plan:**
+- Original plan put external job metadata (`source`/`sourceUrl`/`sourceJobId`/`dedupeKey`) **directly on `Application`** with a coarse 4-value status. Build instead uses a **richer status enum** (`SAVED|APPLIED|OA|INTERVIEW|OFFER|REJECTED|GHOSTED|WITHDRAWN|OTHER`) and **defers external-job fields to a `Job` entity** (Next), added with the extension.
+- **`Company` was un-deferred** — the Phase-1 "no Company table unless asked (Ghost-Index fork)" rule was consciously reversed; `Company` is now the shared identity for future insights. Free-text `company` kept alongside `companyId`.
+- **Status history is now first-class** (`ApplicationEvent`) — the original plan lacked it; this is what makes the "Future insights" questions answerable.
+
+**Next (audit "Next", not yet built):**
+- `Job` + `Application.jobId` (source, externalId, snapshot, location, salary) with an **idempotent upsert** for the Chrome extension.
+- **Per-application `InterviewRound`** (customizable rounds per company: type/date/status/result/notes) — the correct home for "different companies have different round counts", instead of custom board columns.
+- `Application.resumeVersion`; then personal insights (funnel, response %, ghost %) and k-anonymity-gated company-insight rollups.
+
 ## What the user can newly do
 Track their own hunt privately — logging every application **with the exact resume they used** — and watch their funnel / response rate / ghost rate · see **personal insights** (which resume gets replies, which source responds fastest, an "already applied here" warning) · optionally **save jobs straight from the browser** with a companion extension · post a **Comeback** when they land a job · get a weekly **digest** email · feel **"not alone"** and watch a ghost timer · get **notified** when people engage · export or delete their data.
 
