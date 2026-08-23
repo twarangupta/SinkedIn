@@ -68,7 +68,7 @@ export interface Sink {
   /** The highest-scored top-level comment, previewed in the feed (null if none). */
   topComment: TopComment | null;
   pollOptions: PollOption[];
-  _count: { comments: number; votes: number };
+  _count: { comments: number; votes: number; bookmarks: number };
   /** The current user's vote on this Sink (null if not voted / anonymous). */
   myVote: 'BUOY' | 'ANCHOR' | null;
   /** The poll option id the current user chose (null if none / anonymous). */
