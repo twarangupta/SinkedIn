@@ -17,6 +17,7 @@
     "test:watch": "vitest",
     "db:seed": "prisma db seed",
     "db:seed:companies": "tsx prisma/seed.companies.ts",
+    "db:backfill:sink-company": "tsx prisma/backfill-sink-company.ts",
     "db:seed:demo": "tsx prisma/seed.demo.ts",
     "db:unseed:demo": "tsx prisma/unseed.demo.ts"
   },
