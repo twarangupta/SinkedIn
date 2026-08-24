@@ -25,6 +25,8 @@ export interface CreateApplicationInput {
   jobUrl?: string | null;
   appliedAt?: Date | null;
   notes?: string | null;
+  resumeFileKey?: string | null;
+  resumeFileName?: string | null;
 }
 
 export interface UpdateApplicationInput {
@@ -35,6 +37,8 @@ export interface UpdateApplicationInput {
   jobUrl?: string | null;
   appliedAt?: Date | null;
   notes?: string | null;
+  resumeFileKey?: string | null;
+  resumeFileName?: string | null;
 }
 
 /** Fields returned for an application (all owned by the caller — no PII wall to apply). */
@@ -47,6 +51,8 @@ const applicationSelect = {
   jobUrl: true,
   appliedAt: true,
   notes: true,
+  resumeFileKey: true,
+  resumeFileName: true,
   createdAt: true,
   updatedAt: true,
   companyRef: { select: { domain: true } }, // for the company logo (domain only)
@@ -111,6 +117,8 @@ export async function createApplication(
         jobUrl: input.jobUrl ?? null,
         appliedAt,
         notes: input.notes ?? null,
+        resumeFileKey: input.resumeFileKey ?? null,
+        resumeFileName: input.resumeFileName ?? null,
       },
       select: applicationSelect,
     });
@@ -186,6 +194,8 @@ export async function updateApplication(
   if (input.role !== undefined) data.role = input.role.trim();
   if (input.jobUrl !== undefined) data.jobUrl = input.jobUrl;
   if (input.notes !== undefined) data.notes = input.notes;
+  if (input.resumeFileKey !== undefined) data.resumeFileKey = input.resumeFileKey;
+  if (input.resumeFileName !== undefined) data.resumeFileName = input.resumeFileName;
 
   // Status change re-resolves the OTHER free-text and back-fills appliedAt.
   let statusChanged = false;
