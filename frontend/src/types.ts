@@ -121,6 +121,10 @@ export interface Application {
   jobUrl: string | null;
   appliedAt: string | null;
   notes: string | null;
+  /** Private resume PDF object key in the `resumes` bucket; null when none. */
+  resumeFileKey: string | null;
+  /** Original filename of the uploaded resume (display only); null when none. */
+  resumeFileName: string | null;
   createdAt: string;
   updatedAt: string;
   /** Linked company (for the logo); domain only, null for unlinked/user-added. */
