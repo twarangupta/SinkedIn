@@ -71,7 +71,7 @@ function Composer({
   if (!session) {
     return (
       <button
-        onClick={open}
+        onClick={() => open()}
         className="w-full rounded-lg border border-dashed border-line bg-elevated/40 px-4 py-3 text-left text-sm text-ink-3 hover:border-line-strong hover:text-ink"
       >
         {parentId

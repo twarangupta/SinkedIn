@@ -61,7 +61,7 @@ export default function SettingsPage() {
         {!session ? (
           <div className="rounded-xl border border-line bg-surface p-6 text-center">
             <p className="mb-4 text-sm text-ink-2">Sign in to pick your creature.</p>
-            <Button onClick={open}>Sign in</Button>
+            <Button onClick={() => open()}>Sign in</Button>
           </div>
         ) : (
           <>
