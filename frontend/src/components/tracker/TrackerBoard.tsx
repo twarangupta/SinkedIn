@@ -11,6 +11,7 @@
 
 import { useState } from 'react';
 import { shortDate } from '../../lib/format';
+import { CompanyLogo } from './CompanyLogo';
 import { BOARD_PRIMARY, BOARD_TERMINAL, STATUS_LABEL, STATUS_ORDER } from './status';
 import type { Application, ApplicationStatus } from '../../types';
 
@@ -76,7 +77,10 @@ export function TrackerBoard({
                     draggingId === app.id ? 'opacity-50' : ''
                   }`}
                 >
-                  <div className="truncate text-sm font-medium">{app.company}</div>
+                  <div className="flex items-center gap-1.5">
+                    <CompanyLogo name={app.company} domain={app.companyRef?.domain} size={18} />
+                    <div className="truncate text-sm font-medium">{app.company}</div>
+                  </div>
                   <div className="truncate text-xs text-ink-3">{app.role}</div>
                   {app.rounds.length > 0 && (
                     <div className="mt-0.5 text-xs text-ink-3">
