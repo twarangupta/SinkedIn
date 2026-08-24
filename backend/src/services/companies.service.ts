@@ -6,10 +6,9 @@
  * power aggregated insights. Deduped by a normalized name so "Razorpay",
  * " razorpay " and "RAZORPAY" collapse to one row.
  *
- * For now this is used transparently: the tracker resolves the free-text
- * company a user types into a Company via findOrCreateCompany, so the table
- * fills from real usage with no new UI. A prefix-search helper for the
- * autocomplete picker will be added when that UI is built.
+ * The tracker resolves the free-text company a user types into a Company via
+ * findOrCreateCompany (so the table also fills from real usage), and the
+ * company field autocompletes against searchCompanies over the seeded dataset.
  */
 
 import { Prisma } from '@prisma/client';
@@ -46,4 +45,20 @@ export async function findOrCreateCompany(name: string, createdById?: string) {
     }
     throw err;
   }
+}
+
+/**
+ * Autocomplete search over the company dataset. Matches anywhere in the name
+ * (case-insensitive via the lowercased normalizedName). Fine as a plain scan at
+ * this size; add a pg_trgm GIN index if the table ever grows large.
+ */
+export async function searchCompanies(q: string, limit = 8) {
+  const n = normalizeCompanyName(q);
+  if (!n) return [];
+  return prisma.company.findMany({
+    where: { normalizedName: { contains: n } },
+    take: limit,
+    orderBy: { name: 'asc' },
+    select: { id: true, name: true, domain: true },
+  });
 }
