@@ -52,6 +52,10 @@ export function TrackerNav({ rowClassName = '' }: { rowClassName?: string }) {
         Your Tracker
       </div>
       <div className="space-y-0.5">
+        <Link href="/tracker/app" className={`flex items-center justify-between ${rowClassName}`}>
+          <span>All applications</span>
+          <span className="text-xs text-ink-3">{summary?.total ?? 0}</span>
+        </Link>
         {ROWS.map(({ label, status }) => (
           <Link
             key={status}

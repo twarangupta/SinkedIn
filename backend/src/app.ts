@@ -18,6 +18,7 @@ import sinksRouter from './routes/sinks.routes.js';
 import commentsRouter from './routes/comments.routes.js';
 import reportsRouter from './routes/reports.routes.js';
 import applicationsRouter from './routes/applications.routes.js';
+import companiesRouter from './routes/companies.routes.js';
 import sitemapRouter from './routes/sitemap.routes.js';
 import { AppError } from './lib/errors.js';
 
@@ -50,6 +51,7 @@ export function createApp() {
   app.use('/api/v1/comments', commentsRouter);
   app.use('/api/v1/reports', reportsRouter);
   app.use('/api/v1/applications', applicationsRouter);
+  app.use('/api/v1/companies', companiesRouter);
   app.use(sitemapRouter);
 
   // --- Centralized error handler (must be LAST, and must take 4 args so

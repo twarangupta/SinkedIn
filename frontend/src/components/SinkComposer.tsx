@@ -19,6 +19,7 @@ import { uploadSinkImage } from '../lib/uploadImage';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Avatar } from './avatar/Avatar';
+import { CompanySelect } from './tracker/CompanySelect';
 import { CategoryInfoModal } from './CategoryInfoModal';
 import type { Category } from '../types';
 
@@ -230,12 +231,7 @@ export function SinkComposer({ categories }: { categories: Category[] }) {
       )}
 
       {category?.showsCompany && (
-        <Input
-          placeholder="Company (optional)"
-          value={company}
-          onChange={(e) => setCompany(e.target.value)}
-          maxLength={100}
-        />
+        <CompanySelect value={company} onChange={(name) => setCompany(name)} />
       )}
 
       {category?.showsConclusion && (

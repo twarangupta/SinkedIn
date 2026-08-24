@@ -19,6 +19,7 @@ import { apiFetch } from '../../lib/api';
 import { shortDate } from '../../lib/format';
 import { Button } from '../ui/Button';
 import { ApplicationForm } from './ApplicationForm';
+import { CompanyLogo } from './CompanyLogo';
 import { TrackerBoard } from './TrackerBoard';
 import { STATUS_ORDER, STATUS_LABEL, STATUS_PILL } from './status';
 import type { Application, ApplicationStatus } from '../../types';
@@ -205,6 +206,7 @@ export function TrackerApp() {
             <div key={app.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 p-4">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
+                  <CompanyLogo name={app.company} domain={app.companyRef?.domain} />
                   <span className="truncate font-medium">{app.company}</span>
                   <span
                     className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${STATUS_PILL[app.status]}`}

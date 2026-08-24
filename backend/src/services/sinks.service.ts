@@ -14,6 +14,7 @@
 import { Prisma, type Conclusion, type VoteValue } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../lib/errors.js';
+import { findOrCreateCompany } from './companies.service.js';
 
 export interface CreateSinkInput {
   categoryId: string;
@@ -47,6 +48,7 @@ const sinkPublicSelect = {
   body: true,
   imageUrl: true,
   company: true,
+  companyRef: { select: { domain: true } }, // for the company logo (domain only)
   conclusion: true,
   conclusionOther: true,
   score: true,
@@ -118,6 +120,9 @@ export async function createSink(userId: string, input: CreateSinkInput) {
     throw new AppError('This category requires a poll with at least 2 options');
   }
 
+  // Link the free-text company to a centralized Company (logos + company pages).
+  const companyRef = company ? await findOrCreateCompany(company, userId) : null;
+
   return prisma.sink.create({
     data: {
       userId,
@@ -126,6 +131,7 @@ export async function createSink(userId: string, input: CreateSinkInput) {
       body: input.body,
       imageUrl: input.imageUrl,
       company,
+      companyId: companyRef?.id ?? null,
       conclusion,
       conclusionOther,
       pollOptions: pollOptions
@@ -316,6 +322,8 @@ export async function updateSink(
   // matching createSink's strip-by-flag behavior).
   if (existing.category.showsCompany && input.company !== undefined) {
     data.company = input.company;
+    const ref = input.company ? await findOrCreateCompany(input.company, userId) : null;
+    data.companyRef = ref ? { connect: { id: ref.id } } : { disconnect: true };
   }
   if (existing.category.showsConclusion && input.conclusion !== undefined) {
     data.conclusion = input.conclusion;

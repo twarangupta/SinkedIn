@@ -16,6 +16,7 @@ import { SinkComments } from './SinkComments';
 import { SinkActions } from './SinkActions';
 import { ShareButton } from './ShareButton';
 import { BookmarkButton } from './BookmarkButton';
+import { CompanyLogo } from './tracker/CompanyLogo';
 import { timeAgo } from '../lib/format';
 import type { Sink } from '../types';
 
@@ -69,9 +70,13 @@ export function SinkCard({
         <h3 className="mb-1 font-display text-lg font-medium">{sink.title}</h3>
       </Link>
       {sink.company && (
-        <div className="mb-2 text-xs text-ink-3">
-          at {sink.company}
-          {sink.conclusion ? ` · ${sink.conclusion.toLowerCase()}` : ''}
+        <div className="mb-2 flex items-center gap-1 text-xs text-ink-3">
+          <span>at</span>
+          <CompanyLogo name={sink.company} domain={sink.companyRef?.domain} size={16} />
+          <span>
+            {sink.company}
+            {sink.conclusion ? ` · ${sink.conclusion.toLowerCase()}` : ''}
+          </span>
         </div>
       )}
       {sink.body &&

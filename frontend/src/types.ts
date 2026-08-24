@@ -59,6 +59,8 @@ export interface Sink {
   body: string | null;
   imageUrl: string | null;
   company: string | null;
+  /** Linked company (for the logo); domain only, null when unlinked. */
+  companyRef: { domain: string | null } | null;
   conclusion: string | null;
   conclusionOther: string | null;
   score: number;
@@ -121,5 +123,7 @@ export interface Application {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Linked company (for the logo); domain only, null for unlinked/user-added. */
+  companyRef: { domain: string | null } | null;
   rounds: InterviewRound[];
 }
