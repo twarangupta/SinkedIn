@@ -42,6 +42,22 @@ const reorderSchema = z
   .object({ orderedIds: z.array(z.string().uuid()).min(1) })
   .strict();
 
+// A resume object key in the private `resumes` bucket: `{uuid}/{uuid}.pdf`
+// (`{supabaseUserId}/{randomId}.pdf`). We validate the SHAPE only; the storage
+// RLS policy is what actually confines a user to their own folder. `null` clears
+// the resume link.
+const resumeFileKeySchema = z
+  .string()
+  .regex(
+    /^[0-9a-f-]{36}\/[0-9a-f-]{36}\.pdf$/i,
+    'Invalid resume file key',
+  )
+  .nullable()
+  .optional();
+
+// Original resume filename (display only). Stored/cleared alongside the key.
+const resumeFileNameSchema = z.string().max(255).nullable().optional();
+
 const createSchema = z.object({
   company: z.string().min(1).max(200),
   role: z.string().min(1).max(200),
@@ -50,6 +66,8 @@ const createSchema = z.object({
   jobUrl: z.string().url().max(2048).nullable().optional(),
   appliedAt: z.coerce.date().nullable().optional(),
   notes: z.string().max(5000).nullable().optional(),
+  resumeFileKey: resumeFileKeySchema,
+  resumeFileName: resumeFileNameSchema,
 });
 
 const updateSchema = z
@@ -61,6 +79,8 @@ const updateSchema = z
     jobUrl: z.string().url().max(2048).nullable().optional(),
     appliedAt: z.coerce.date().nullable().optional(),
     notes: z.string().max(5000).nullable().optional(),
+    resumeFileKey: resumeFileKeySchema,
+    resumeFileName: resumeFileNameSchema,
   })
   .strict();
 
