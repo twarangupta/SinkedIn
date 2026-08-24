@@ -49,6 +49,7 @@ const applicationSelect = {
   notes: true,
   createdAt: true,
   updatedAt: true,
+  companyRef: { select: { domain: true } }, // for the company logo (domain only)
   rounds: {
     select: {
       id: true,
