@@ -25,6 +25,17 @@ export default function TrackerAppPage() {
         <Suspense fallback={null}>
           <TrackerApp />
         </Suspense>
+        <p className="mt-8 text-center text-xs text-ink-3">
+          Company logos by{' '}
+          <a
+            href="https://logo.dev"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:underline"
+          >
+            Logo.dev
+          </a>
+        </p>
       </div>
     </div>
   );
