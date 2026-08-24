@@ -21,5 +21,5 @@ export function StartTrackingButton() {
   if (session) {
     return <Button onClick={() => router.push('/tracker/app')}>Go to your tracker</Button>;
   }
-  return <Button onClick={open}>Start tracking, it&apos;s free</Button>;
+  return <Button onClick={() => open()}>Start tracking, it&apos;s free</Button>;
 }

@@ -47,7 +47,7 @@ export function Header() {
                 <span className="px-2 text-sm text-ink-3">…</span>
               )
             ) : (
-              <Button onClick={open} className="!h-9">
+              <Button onClick={() => open()} className="!h-9">
                 Sign in
               </Button>
             )}

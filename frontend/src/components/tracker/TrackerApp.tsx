@@ -109,7 +109,7 @@ export function TrackerApp() {
           Only you can ever see what you track. Sign in to start managing your
           applications.
         </p>
-        <Button onClick={openAuth} disabled={authLoading}>
+        <Button onClick={() => openAuth()} disabled={authLoading}>
           Sign in to start tracking
         </Button>
       </div>

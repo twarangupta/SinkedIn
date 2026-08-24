@@ -20,7 +20,7 @@ export function BoatMark({
       className={className}
       xmlns="http://www.w3.org/2000/svg"
     >
-      <circle cx="24" cy="24" r="23.5" fill="#1f1f23" stroke="#2a2a30" />
+      <circle cx="24" cy="24" r="24" fill="#1f1f23" />
       <path d="M6 32 L44 21 Q25 44 6 32 Z" fill="#818cf8" />
       <line
         x1="25"

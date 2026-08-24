@@ -85,6 +85,11 @@ export function AuthForm({ onSuccess }: { onSuccess?: () => void }) {
           {mode === 'signin' ? 'Create one' : 'Sign in'}
         </button>
       </p>
+
+      {/* Light, on-brand reassurance: free for people, hostile to scrapers. */}
+      <p className="mt-3 text-center text-xs text-ink-3">
+        Free for humans, not AI. No credit card, ever.
+      </p>
     </div>
   );
 }

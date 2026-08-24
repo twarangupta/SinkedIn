@@ -71,7 +71,7 @@ export function MobileMenu() {
                 Home
               </Link>
               <Link href="/tracker" onClick={close} className={rowCls}>
-                Tracker
+                Application Tracker
               </Link>
               {STUBS.map((label) => (
                 <button key={label} onClick={close} className={rowCls}>

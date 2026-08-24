@@ -52,7 +52,7 @@ export default function SavedPage() {
             <p className="mb-3 text-sm text-ink-3">
               Sign in to see the Sinks you&apos;ve saved.
             </p>
-            <Button onClick={open}>Sign in</Button>
+            <Button onClick={() => open()}>Sign in</Button>
           </div>
         ) : sinks === null ? (
           <p className="py-8 text-center text-ink-3">Loading…</p>

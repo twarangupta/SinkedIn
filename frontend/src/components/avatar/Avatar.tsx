@@ -59,14 +59,6 @@ export function Avatar({
           {initials(handle)}
         </text>
       )}
-      <circle
-        cx="50"
-        cy="50"
-        r="49"
-        fill="none"
-        stroke="var(--color-line-strong)"
-        strokeWidth="2"
-      />
     </svg>
   );
 }

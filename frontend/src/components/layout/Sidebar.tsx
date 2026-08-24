@@ -24,7 +24,7 @@ export function Sidebar() {
             Home
           </Link>
           <Link href="/tracker" className={navRowCls}>
-            Tracker
+            Application Tracker
           </Link>
           {STUBS.map((label) => (
             <button key={label} className={navRowCls}>

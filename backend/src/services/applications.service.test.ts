@@ -127,6 +127,53 @@ describe('updateApplication', () => {
   });
 });
 
+describe('resumeFileKey', () => {
+  const key = '11111111-1111-1111-1111-111111111111/22222222-2222-2222-2222-222222222222.pdf';
+
+  it('stores a resume key + filename given on create', async () => {
+    const app = await createApplication(userId, {
+      company: 'Google',
+      role: 'SWE',
+      resumeFileKey: key,
+      resumeFileName: 'Ada_CV.pdf',
+    });
+    expect(app.resumeFileKey).toBe(key);
+    expect(app.resumeFileName).toBe('Ada_CV.pdf');
+  });
+
+  it('defaults to no resume when none is given', async () => {
+    const app = await createApplication(userId, { company: 'Meta', role: 'E4' });
+    expect(app.resumeFileKey).toBeNull();
+  });
+
+  it('sets and later clears the resume key on update', async () => {
+    const app = await createApplication(userId, { company: 'Stripe', role: 'SWE' });
+    const withResume = await updateApplication(userId, app.id, {
+      resumeFileKey: key,
+      resumeFileName: 'cv.pdf',
+    });
+    expect(withResume.resumeFileKey).toBe(key);
+    expect(withResume.resumeFileName).toBe('cv.pdf');
+
+    const cleared = await updateApplication(userId, app.id, {
+      resumeFileKey: null,
+      resumeFileName: null,
+    });
+    expect(cleared.resumeFileKey).toBeNull();
+    expect(cleared.resumeFileName).toBeNull();
+  });
+
+  it('leaves the resume key untouched when the field is omitted', async () => {
+    const app = await createApplication(userId, {
+      company: 'Amazon',
+      role: 'SDE',
+      resumeFileKey: key,
+    });
+    const edited = await updateApplication(userId, app.id, { role: 'SDE-2' });
+    expect(edited.resumeFileKey).toBe(key);
+  });
+});
+
 describe('deleteApplication', () => {
   it('soft-deletes and removes it from the list', async () => {
     const app = await createApplication(userId, { company: 'Zomato', role: 'r' });
