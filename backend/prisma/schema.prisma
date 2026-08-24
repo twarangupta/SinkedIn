@@ -248,6 +248,14 @@ model Application {
   jobUrl      String? // link to the original external posting
   appliedAt   DateTime? // when the user applied (null while still SAVED)
   notes       String?           @db.Text
+  // Private resume PDF for this application. Stores the Supabase Storage object
+  // key in the PRIVATE `resumes` bucket (path `{supabaseUserId}/{uuid}.pdf`), not
+  // a public URL: the file is PII, read only via short-lived signed URLs. One
+  // resume per application; null when none. Never exposed outside the owner.
+  resumeFileKey String?
+  // Original filename of the uploaded resume (e.g. "Ada_Lovelace_CV.pdf"), for
+  // display only. Set/cleared together with resumeFileKey.
+  resumeFileName String?
   deletedAt   DateTime? // soft delete (never hard-delete in normal operation)
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
