@@ -47,6 +47,23 @@ async function main() {
   const n = userIds.length;
   const now = Date.now();
 
+  // Link demo sinks to the centralized Company entity (creating it if missing),
+  // so the feed shows real logos and Phase-3 company pages include demo content.
+  const companyIdByName = new Map<string, string>();
+  const resolveCompany = async (name?: string): Promise<string | null> => {
+    if (!name) return null;
+    const key = name.trim().toLowerCase().replace(/\s+/g, ' ');
+    const cached = companyIdByName.get(key);
+    if (cached) return cached;
+    const found =
+      (await prisma.company.findUnique({ where: { normalizedName: key } })) ??
+      (await prisma.company.create({
+        data: { name: name.trim(), normalizedName: key },
+      }));
+    companyIdByName.set(key, found.id);
+    return found.id;
+  };
+
   let totalVotes = 0;
   let totalComments = 0;
   let totalBookmarks = 0;
@@ -69,6 +86,7 @@ async function main() {
         title: sink.title,
         body: sink.body,
         company: sink.company,
+        companyId: await resolveCompany(sink.company),
         conclusion: sink.conclusion,
         score: buoys - anchors, // cached score matches the votes we create
         createdAt: sinkCreatedAt,
