@@ -12,6 +12,8 @@ import { useEffect, useState } from 'react';
 import { apiFetch } from '../../lib/api';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
+import { CompanyLogo } from './CompanyLogo';
+import { CompanySelect } from './CompanySelect';
 import { RoundsEditor } from './RoundsEditor';
 import { STATUS_ORDER, STATUS_LABEL } from './status';
 import type { Application, ApplicationStatus, InterviewRound } from '../../types';
@@ -32,6 +34,9 @@ export function ApplicationForm({
   onRoundsChange?: (rounds: InterviewRound[]) => void;
 }) {
   const [company, setCompany] = useState(existing?.company ?? '');
+  const [companyDomain, setCompanyDomain] = useState<string | null>(
+    existing?.companyRef?.domain ?? null,
+  );
   const [role, setRole] = useState(existing?.role ?? '');
   const [status, setStatus] = useState<ApplicationStatus>(existing?.status ?? 'SAVED');
   const [statusOther, setStatusOther] = useState(existing?.statusOther ?? '');
@@ -95,7 +100,16 @@ export function ApplicationForm({
             </button>
           </div>
 
-          <Input placeholder="Company" value={company} onChange={(e) => setCompany(e.target.value)} maxLength={200} />
+          <div className="flex items-center gap-2">
+            <CompanyLogo name={company || '?'} domain={companyDomain} size={28} />
+            <CompanySelect
+              value={company}
+              onChange={(name, domain) => {
+                setCompany(name);
+                setCompanyDomain(domain);
+              }}
+            />
+          </div>
           <Input placeholder="Role / title" value={role} onChange={(e) => setRole(e.target.value)} maxLength={200} />
 
           <select
