@@ -49,7 +49,7 @@ export function CompanyLogo({
         loading="lazy"
         onError={() => setFailedSrc(src)}
         style={box}
-        className="shrink-0 rounded-md border border-line bg-white object-contain p-0.5"
+        className="shrink-0 rounded-md bg-white object-contain p-0.5"
       />
     );
   }
