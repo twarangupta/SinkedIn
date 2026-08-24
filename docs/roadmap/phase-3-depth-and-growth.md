@@ -52,6 +52,8 @@ Follow categories or users; "your feed" vs "everything."
 ### Company mentions as soft tags `[in-plan]`
 Since `company` is free text, a lightweight "Sinks mentioning Amazon" text-match view — useful, low-effort, no canonical data.
 
+> **Captured update (2026-08-25):** the centralized **`Company` entity now exists** (built in Phase 2 for the tracker: deduped by `normalizedName`, optional `domain`, seeded ~9.6k from `prisma/data/companies.json`, grown by find-or-create, with autocomplete at `GET /api/v1/companies?q=`). **`Sink.companyId` links Sinks to it** (resolved on create/edit; a `@@index([companyId])` exists), and `Application.companyId` links tracker rows too. So the company pages/hubs can query **"all Sinks about Razorpay" by FK** (reliable), not only by text-match, and company **logos** come from the domain via Logo.dev (nothing stored). Net effect on the plan: the Ghost-Index-fork's "add a `Company` table + `Sink.companyId`" step is **effectively done** — what remains for real per-company scorecards is only the **aggregation + k-anonymity + opt-in signal pipeline**, not the identity layer.
+
 ### Interview-Experience Hub + SEO `[new · retention #1 — the primary acquisition engine]`
 A **structured template** for the Interview Experience category (rounds, questions asked, difficulty, stage reached, outcome, company) rendered as **SSR, SEO-indexed pages** with **JSON-LD structured data**, plus per-company / per-category hubs.
 
@@ -68,6 +70,74 @@ graph TD
 ```
 
 **Why it wins:** validated by scale — AmbitionBox (~6.4M/mo) and GeeksforGeeks (~35M/mo) were built largely on this exact search intent. They're soulless data dumps; SinkedIn's wedge is the **same SEO surface wrapped in a community with a voice.** It also serves employed lurkers (prep before they're even hunting) — the wide-door audience. **Pull *basic* SEO earlier** (clean URLs, per-Sink meta/OG, sitemap-per-hub — the SSR + sitemap groundwork already exists) since SEO compounds slowly; save the full structured hub for here.
+
+#### What the user sees + does (Interviews & Companies screens) `[captured 2026-08-24]`
+
+**Interviews screen** — a browsable, searchable list of interview experiences:
+```
+┌──────────────────────────────────────────────────┐
+│  Interview Experiences               [ Search 🔍 ]│
+│  Filter:  [Company ▾] [Role ▾] [Difficulty ▾]     │
+├──────────────────────────────────────────────────┤
+│  Razorpay · SDE-2 · Hard · Rejected        ▲ 156  │
+│  "5 rounds, the machine-coding round was brutal"  │
+│  Google · L4 · Medium · Offer              ▲ 89   │
+│  Amazon · SDE-1 · Hard · Ghosted           ▲ 44   │
+└──────────────────────────────────────────────────┘
+```
+Click one → the full experience with **structured rounds** (the public rounds, distinct from the private tracker's rounds):
+```
+┌──────────────────────────────────────────────────┐
+│  Razorpay · SDE-2 · Bangalore · Rejected   ▲ 156  │
+│  Round 1 · Online Assessment   2 DSA, 90 min      │
+│  Round 2 · Machine Coding      Build a logger     │
+│  Round 3 · System Design       Design a wallet    │
+│  Round 4 · Hiring Manager      Behavioral         │
+│  💬 52 comments      🔖 Save      ↗ Share          │
+└──────────────────────────────────────────────────┘
+```
+*Do:* search/filter by company, role, difficulty, outcome; read round-by-round; vote / comment / save / share; **post your own**; arrive from Google (SEO-indexed).
+
+**Companies screen** — a directory, then a per-company page of **community intel, never listings**:
+```
+┌──────────────────────────────────────────────────┐
+│  Razorpay                              [ Follow + ]│
+│  What the community reports (aggregated)          │
+│  Interview difficulty   ●●●●○  ~Hard              │
+│  Typical rounds         ~4                         │
+│  Ghost vibes            "often"  (from 24 reports) │
+│  Salary (SDE-2)         ~₹30–45 LPA  (range)       │
+│  [ Sinks ]  [ Interviews ]  [ Salaries ]          │
+└──────────────────────────────────────────────────┘
+```
+*Do:* search a company; see aggregated difficulty / typical rounds / ghost vibes / salary **ranges**; browse its Sinks / interviews / salaries; **follow** the company.
+
+**Where the data comes from, and the guardrails:**
+```mermaid
+flowchart TD
+    IE["Interview-experience Sinks<br/>(public · pseudonymous · structured rounds)"]
+    IE --> HUB["Interviews hub<br/>list · search · filter"]
+    IE --> CO["Company page<br/>/c/:company"]
+    CO --> AGG["Aggregated vibes + ranges<br/>difficulty · rounds · ghost rate · salary"]
+    AGG --> KA{"k-anonymity gate<br/>enough distinct reporters?"}
+    KA -->|yes| SHOW["Show a range / vibe"]
+    KA -->|no| HIDE["Hide it (protect the poster)"]
+    TR["Private tracker<br/>(your own applications + rounds)"]
+    TR -. never shown on these public screens .-> HUB
+    TR -->|"user-initiated: 'post this as<br/>an interview experience'"| IE
+    style IE fill:#3B82F6,color:#fff
+    style TR fill:#3d1f0b,color:#fff
+    style HIDE fill:#6b7280,color:#fff
+```
+- **Never a job board:** company pages show *what people experienced*, not open roles.
+- **Never exact, never individual:** stats are ranges/vibes, and hidden below a k-anonymity threshold.
+- **Private tracker stays private:** it never appears here; the only link is a *user-initiated* "share as interview experience" bridge (fills these hubs from real usage, the content flywheel).
+
+#### Proposed additions worth considering `[opinion, 2026-08-24]`
+- **Per-company/role "questions asked" bank** — aggregate the `questions`/round notes across experiences into "commonly asked at Razorpay SDE-2". Direct output of the structured rounds; huge for prep + SEO. **Recommend.**
+- **Tracker → interview-experience bridge** — when a user logs an Interview status or rounds in their private tracker, one-tap "share this as an experience" (pre-filled, they choose what's public). Solves the hubs' **cold-start** and turns tracker usage into public content. **Recommend (high leverage).**
+- **"Prepping here" focused view** — from a company page, a button that pulls its interview experiences + question bank into one prep view. Serves the reader before they even apply (the wide-door lurker). **Nice-to-have.**
+- Deliberately **not** adding: a salary product, filters/percentile charts, exact per-company scorecards (Ghost-Index fork only), or anything that reads as job listings.
 
 ### Moderation console `[new · required at this scale]`
 A report **queue**, hide/restore, user warnings/suspensions, spam heuristics. Manual review doesn't scale past a point — build the tooling *before* the community outgrows it.
