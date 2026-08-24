@@ -13,17 +13,36 @@ import { useAuth } from './auth';
 
 interface AuthModalValue {
   isOpen: boolean;
-  open: () => void;
+  /**
+   * Open the sign-in modal. Pass `redirectTo` to send the user to that path
+   * after a successful sign-in (e.g. the tracker view they clicked while signed
+   * out) — the modal consumes it on success.
+   */
+  open: (redirectTo?: string) => void;
   close: () => void;
+  /** Where to navigate after a successful sign-in, if the opener requested it. */
+  redirectTo: string | null;
 }
 
 const AuthModalContext = createContext<AuthModalValue | undefined>(undefined);
 
 export function AuthModalProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [redirectTo, setRedirectTo] = useState<string | null>(null);
   return (
     <AuthModalContext.Provider
-      value={{ isOpen, open: () => setIsOpen(true), close: () => setIsOpen(false) }}
+      value={{
+        isOpen,
+        redirectTo,
+        open: (to?: string) => {
+          setRedirectTo(to ?? null);
+          setIsOpen(true);
+        },
+        close: () => {
+          setIsOpen(false);
+          setRedirectTo(null);
+        },
+      }}
     >
       {children}
     </AuthModalContext.Provider>

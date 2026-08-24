@@ -6,11 +6,20 @@
  */
 
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuthModal } from '../lib/authModal';
 import { AuthForm } from './AuthForm';
 
 export function AuthModal() {
-  const { isOpen, close } = useAuthModal();
+  const { isOpen, close, redirectTo } = useAuthModal();
+  const router = useRouter();
+
+  // On a successful sign-in, honor a redirect target the opener asked for (e.g.
+  // the tracker view a signed-out user clicked), then close the modal.
+  const handleSuccess = () => {
+    if (redirectTo) router.push(redirectTo);
+    close();
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -30,7 +39,7 @@ export function AuthModal() {
     >
       <div className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
         <div className="rounded-2xl border border-line bg-surface p-6">
-          <AuthForm onSuccess={close} />
+          <AuthForm onSuccess={handleSuccess} />
         </div>
       </div>
     </div>
