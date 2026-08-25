@@ -18,6 +18,7 @@ import {
   deleteApplicationHandler,
   exportApplicationsHandler,
   getApplicationHandler,
+  insightsHandler,
   listApplicationsHandler,
   purgeTrackerDataHandler,
   summarizeApplicationsHandler,
@@ -91,6 +92,7 @@ const router = Router();
 router.get('/', requireAuth, listApplicationsHandler);
 // Declared before /:id so "summary" / "export" are not treated as an id.
 router.get('/summary', requireAuth, summarizeApplicationsHandler);
+router.get('/insights', requireAuth, insightsHandler);
 router.get('/export', requireAuth, exportApplicationsHandler);
 router.get('/:id', requireAuth, getApplicationHandler);
 router.post(

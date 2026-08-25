@@ -6,6 +6,7 @@
 
 import type { NextFunction, Request, Response } from 'express';
 import { ApplicationStatus } from '@prisma/client';
+import { getInsights } from '../services/applicationInsights.service.js';
 import {
   applicationsExportToCsv,
   createApplication,
@@ -31,6 +32,24 @@ export async function summarizeApplicationsHandler(
     }
     const summary = await summarizeApplications(req.user.id);
     res.json(summary);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/** GET /api/v1/applications/insights → private single-user dashboard. Auth required. */
+export async function insightsHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+    const insights = await getInsights(req.user.id);
+    res.json(insights);
   } catch (err) {
     next(err);
   }
