@@ -258,7 +258,7 @@ describe('exportApplications', () => {
   it('serializes to CSV with a header row and one row per application', async () => {
     await createApplication(userId, { company: 'Stripe', role: 'SWE' });
     const csv = applicationsExportToCsv(await exportApplications(userId));
-    const lines = csv.replace(/^﻿/, '').split('\r\n');
+    const lines = csv.replace(/^\uFEFF/, '').split('\r\n');
     expect(lines[0]).toContain('Company');
     expect(lines).toHaveLength(2); // header + one application
     expect(lines[1]).toContain('Stripe');

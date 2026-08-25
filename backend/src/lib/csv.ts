@@ -33,5 +33,5 @@ export function toCsv(headers: string[], rows: unknown[][]): string {
   const lines = [headers.map(cell).join(',')];
   for (const row of rows) lines.push(row.map(cell).join(','));
   // CRLF line endings + BOM = maximum spreadsheet compatibility.
-  return '﻿' + lines.join('\r\n');
+  return '\uFEFF' + lines.join('\r\n');
 }

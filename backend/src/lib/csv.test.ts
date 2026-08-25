@@ -7,12 +7,12 @@ import { describe, expect, it } from 'vitest';
 import { toCsv } from './csv.js';
 
 /** Strip the leading UTF-8 BOM so assertions read cleanly. */
-const noBom = (s: string) => s.replace(/^﻿/, '');
+const noBom = (s: string) => s.replace(/^\uFEFF/, '');
 
 describe('toCsv', () => {
   it('joins headers and rows with CRLF and a BOM', () => {
     const csv = toCsv(['A', 'B'], [['1', '2']]);
-    expect(csv.startsWith('﻿')).toBe(true);
+    expect(csv.startsWith('\uFEFF')).toBe(true);
     expect(noBom(csv)).toBe('A,B\r\n1,2');
   });
 
