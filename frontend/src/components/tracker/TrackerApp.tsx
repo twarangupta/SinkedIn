@@ -16,6 +16,7 @@ import { useSearchParams } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
 import { useAuthModal } from '../../lib/authModal';
 import { apiFetch } from '../../lib/api';
+import { deleteResume } from '../../lib/uploadResume';
 import { shortDate } from '../../lib/format';
 import { Button } from '../ui/Button';
 import { ApplicationForm } from './ApplicationForm';
@@ -91,8 +92,13 @@ export function TrackerApp() {
   };
 
   const remove = async (id: string) => {
+    // Grab the resume key before we drop the row from state, so we can also
+    // hard-remove the PDF from private storage (deleting the application must
+    // not leave the user's resume PII orphaned in the bucket).
+    const resumeFileKey = apps?.find((a) => a.id === id)?.resumeFileKey ?? null;
     try {
       await apiFetch(`/api/v1/applications/${id}`, { method: 'DELETE' });
+      if (resumeFileKey) deleteResume(resumeFileKey).catch(() => {});
       setApps((prev) => (prev ? prev.filter((a) => a.id !== id) : prev));
       setConfirmId(null);
     } catch {
