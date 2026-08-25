@@ -14,7 +14,9 @@ import { getCategoriesServer, getFeedServer } from '@/lib/server-api';
 import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { RightSidebar } from '@/components/layout/RightSidebar';
+import { MobileCategoryBar } from '@/components/layout/MobileCategoryBar';
 import { SinkComposer } from '@/components/SinkComposer';
+import { WelcomeBanner } from '@/components/WelcomeBanner';
 import { Feed } from '@/components/Feed';
 import { FeedFilter } from '@/components/FeedFilter';
 
@@ -57,7 +59,9 @@ export default async function HomePage({
         <Sidebar />
 
         <main className="min-w-0 flex-1 space-y-4">
+          <WelcomeBanner />
           <SinkComposer categories={categories} />
+          <MobileCategoryBar categories={categories} activeSlug={category} />
 
           <div className="flex items-center gap-4 border-b border-line text-sm">
             <Link href={tabHref('top')} className={tabClass(sort === 'top')}>

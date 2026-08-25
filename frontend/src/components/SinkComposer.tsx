@@ -14,11 +14,14 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../lib/auth';
 import { useAuthModal } from '../lib/authModal';
 import { useMe } from '../lib/me';
+import { useRotating } from '../lib/useRotating';
+import { COMPOSER_PROMPTS } from '../lib/prompts';
 import { apiFetch } from '../lib/api';
 import { uploadSinkImage } from '../lib/uploadImage';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Avatar } from './avatar/Avatar';
+import { DefaultAvatar } from './avatar/DefaultAvatar';
 import { CompanySelect } from './tracker/CompanySelect';
 import { CategoryInfoModal } from './CategoryInfoModal';
 import type { Category } from '../types';
@@ -47,6 +50,8 @@ export function SinkComposer({ categories }: { categories: Category[] }) {
   // The caller's avatar (from the shared MeProvider) so the composer shows
   // *their* creature, not a grey blank, matching every other avatar on the page.
   const { me } = useMe();
+  // Rotating prompt so the composer feels alive and nudges honest, human posts.
+  const { item: prompt, key: promptKey } = useRotating(COMPOSER_PROMPTS);
 
   const category = categories.find((c) => c.id === categoryId);
 
@@ -132,17 +137,28 @@ export function SinkComposer({ categories }: { categories: Category[] }) {
 
   if (!expanded) {
     return (
-      <div className="flex items-start gap-3 rounded-xl border border-line bg-surface p-4">
+      <div className="flex items-center gap-3 rounded-xl border border-line bg-surface p-4">
         {me ? (
           <Avatar avatarId={me.avatarId} handle={me.handle} size={36} />
         ) : (
-          <div className="h-9 w-9 shrink-0 rounded-full bg-elevated" />
+          <DefaultAvatar size={36} />
         )}
         <button
           onClick={startComposing}
-          className="min-h-[72px] flex-1 rounded-lg border border-line bg-elevated px-4 py-3 text-left text-sm text-ink-3 hover:border-line-strong"
+          className="flex min-h-[52px] flex-1 items-center rounded-lg border border-line bg-elevated px-4 text-left text-sm text-ink-2 transition-colors hover:border-primary hover:bg-elevated/70 hover:text-ink"
         >
-          Drop a Sink: a bad-boss rant, a rejection, a raise, a small win…
+          <span key={promptKey} className="rotator-fade inline-block">
+            {prompt}
+          </span>
+        </button>
+        <button
+          onClick={startComposing}
+          className="hidden shrink-0 items-center gap-1.5 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-hover sm:flex"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          Post
         </button>
       </div>
     );
