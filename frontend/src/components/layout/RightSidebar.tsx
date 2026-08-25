@@ -3,6 +3,7 @@
  * contributors / Auras come later (gamification is a later phase).
  */
 
+import Link from 'next/link';
 import type { Category } from '../../types';
 
 export function RightSidebar({ categories }: { categories: Category[] }) {
@@ -11,14 +12,20 @@ export function RightSidebar({ categories }: { categories: Category[] }) {
       <div className="sticky top-20 space-y-4">
         <div className="rounded-xl border border-line bg-surface p-4">
           <h3 className="mb-3 font-medium">Trending categories</h3>
-          <ul className="space-y-2.5">
+          <ul className="space-y-1">
             {categories.slice(0, 7).map((category) => (
-              <li key={category.id} className="flex items-center gap-2 text-sm">
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: category.color }}
-                />
-                <span className="text-ink-2">{category.name}</span>
+              <li key={category.id}>
+                {/* Same behavior as the feed filter: link to the filtered feed. */}
+                <Link
+                  href={`/?category=${category.slug}`}
+                  className="-mx-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-ink-2 transition-colors hover:bg-elevated hover:text-ink"
+                >
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: category.color }}
+                  />
+                  {category.name}
+                </Link>
               </li>
             ))}
           </ul>

@@ -7,10 +7,13 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '../lib/prisma.js';
 import {
+  applicationsExportToCsv,
   createApplication,
   deleteApplication,
+  exportApplications,
   getApplication,
   listApplications,
+  purgeTrackerData,
   updateApplication,
 } from './applications.service.js';
 
@@ -217,6 +220,85 @@ describe('status history (ApplicationEvent)', () => {
     });
     // SAVED (create) → OA → INTERVIEW == 3 events; the notes-only edit adds none.
     expect(events.map((e) => e.status)).toEqual(['SAVED', 'OA', 'INTERVIEW']);
+  });
+});
+
+describe('exportApplications', () => {
+  it('returns only the caller\'s applications, with rounds and status history', async () => {
+    const mine = await createApplication(userId, {
+      company: 'Google',
+      role: 'L4',
+      status: 'APPLIED',
+    });
+    await createApplication(otherId, { company: 'Secret Corp', role: 'x' });
+    await prisma.interviewRound.create({
+      data: { applicationId: mine.id, position: 1, type: 'TECHNICAL', result: 'PENDING' },
+    });
+
+    const out = await exportApplications(userId);
+    expect(out.applications).toHaveLength(1);
+    const app = out.applications[0];
+    expect(app.company).toBe('Google');
+    expect(app.rounds).toHaveLength(1);
+    // Opening event logged on create.
+    expect(app.events.map((e) => e.status)).toEqual(['APPLIED']);
+    // Never leaks another user's rows.
+    expect(out.applications.some((a) => a.company === 'Secret Corp')).toBe(false);
+  });
+
+  it('includes soft-deleted applications (still the user\'s data)', async () => {
+    const app = await createApplication(userId, { company: 'Zomato', role: 'r' });
+    await deleteApplication(userId, app.id);
+
+    const out = await exportApplications(userId);
+    expect(out.applications).toHaveLength(1);
+    expect(out.applications[0].deletedAt).not.toBeNull();
+  });
+
+  it('serializes to CSV with a header row and one row per application', async () => {
+    await createApplication(userId, { company: 'Stripe', role: 'SWE' });
+    const csv = applicationsExportToCsv(await exportApplications(userId));
+    const lines = csv.replace(/^\uFEFF/, '').split('\r\n');
+    expect(lines[0]).toContain('Company');
+    expect(lines).toHaveLength(2); // header + one application
+    expect(lines[1]).toContain('Stripe');
+  });
+});
+
+describe('purgeTrackerData', () => {
+  it('hard-deletes all of the caller\'s applications, rounds, and events', async () => {
+    const a = await createApplication(userId, { company: 'Google', role: 'L4', status: 'APPLIED' });
+    await prisma.interviewRound.create({
+      data: { applicationId: a.id, position: 1, type: 'TECHNICAL', result: 'PENDING' },
+    });
+    const soft = await createApplication(userId, { company: 'Meta', role: 'E4' });
+    await deleteApplication(userId, soft.id); // even soft-deleted rows are purged
+
+    const result = await purgeTrackerData(userId);
+    expect(result.deletedCount).toBe(2);
+    expect(await prisma.application.count({ where: { userId } })).toBe(0);
+    expect(await prisma.interviewRound.count()).toBe(0);
+    expect(await prisma.applicationEvent.count()).toBe(0);
+  });
+
+  it('returns the resume keys so the caller can purge storage', async () => {
+    const key = `${crypto.randomUUID()}/${crypto.randomUUID()}.pdf`;
+    await createApplication(userId, {
+      company: 'Stripe',
+      role: 'SWE',
+      resumeFileKey: key,
+      resumeFileName: 'resume.pdf',
+    });
+    const result = await purgeTrackerData(userId);
+    expect(result.resumeKeys).toEqual([key]);
+  });
+
+  it('never touches another user\'s data', async () => {
+    await createApplication(userId, { company: 'Mine', role: 'r' });
+    await createApplication(otherId, { company: 'Theirs', role: 'r' });
+
+    await purgeTrackerData(userId);
+    expect(await prisma.application.count({ where: { userId: otherId } })).toBe(1);
   });
 });
 

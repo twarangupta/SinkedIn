@@ -16,8 +16,11 @@ import { rateLimit } from '../middleware/rateLimit.js';
 import {
   createApplicationHandler,
   deleteApplicationHandler,
+  exportApplicationsHandler,
   getApplicationHandler,
+  insightsHandler,
   listApplicationsHandler,
+  purgeTrackerDataHandler,
   summarizeApplicationsHandler,
   updateApplicationHandler,
 } from '../controllers/applications.controller.js';
@@ -87,8 +90,10 @@ const updateSchema = z
 const router = Router();
 
 router.get('/', requireAuth, listApplicationsHandler);
-// Declared before /:id so "summary" is not treated as an application id.
+// Declared before /:id so "summary" / "export" are not treated as an id.
 router.get('/summary', requireAuth, summarizeApplicationsHandler);
+router.get('/insights', requireAuth, insightsHandler);
+router.get('/export', requireAuth, exportApplicationsHandler);
 router.get('/:id', requireAuth, getApplicationHandler);
 router.post(
   '/',
@@ -103,6 +108,14 @@ router.patch(
   rateLimit({ windowMs: 60_000, max: 60 }),
   validateBody(updateSchema),
   updateApplicationHandler,
+);
+// Collection-level DELETE = purge ALL of the caller's tracker data (the
+// "delete my data" control). Rate-limited: it is destructive and irreversible.
+router.delete(
+  '/',
+  requireAuth,
+  rateLimit({ windowMs: 60_000, max: 5 }),
+  purgeTrackerDataHandler,
 );
 router.delete('/:id', requireAuth, deleteApplicationHandler);
 

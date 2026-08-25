@@ -17,6 +17,8 @@ import { Avatar } from '../../components/avatar/Avatar';
 import { AVATAR_CATALOG, avatarName } from '../../components/avatar/catalog';
 import { PageHeader } from '../../components/PageHeader';
 import { HandlePicker } from '../../components/HandlePicker';
+import { ExportData } from '../../components/settings/ExportData';
+import { DeleteTrackerData } from '../../components/settings/DeleteTrackerData';
 import { Button } from '../../components/ui/Button';
 
 export default function SettingsPage() {
@@ -126,6 +128,8 @@ export default function SettingsPage() {
               </Button>
             </div>
             </section>
+            <ExportData />
+            <DeleteTrackerData />
           </>
         )}
       </div>

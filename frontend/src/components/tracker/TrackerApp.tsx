@@ -16,11 +16,13 @@ import { useSearchParams } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
 import { useAuthModal } from '../../lib/authModal';
 import { apiFetch } from '../../lib/api';
+import { deleteResume } from '../../lib/uploadResume';
 import { shortDate } from '../../lib/format';
 import { Button } from '../ui/Button';
 import { ApplicationForm } from './ApplicationForm';
 import { CompanyLogo } from './CompanyLogo';
 import { TrackerBoard } from './TrackerBoard';
+import { TrackerInsights } from './TrackerInsights';
 import { STATUS_ORDER, STATUS_LABEL, STATUS_PILL } from './status';
 import type { Application, ApplicationStatus } from '../../types';
 
@@ -35,7 +37,7 @@ export function TrackerApp() {
       : 'ALL';
   const [apps, setApps] = useState<Application[] | null>(null);
   const [filter, setFilter] = useState<ApplicationStatus | 'ALL'>(initialFilter);
-  const [view, setView] = useState<'list' | 'board'>('list');
+  const [view, setView] = useState<'list' | 'board' | 'insights'>('list');
 
   // Follow the ?status= param (sidebar "Your Tracker" links) when it changes.
   useEffect(() => {
@@ -91,8 +93,13 @@ export function TrackerApp() {
   };
 
   const remove = async (id: string) => {
+    // Grab the resume key before we drop the row from state, so we can also
+    // hard-remove the PDF from private storage (deleting the application must
+    // not leave the user's resume PII orphaned in the bucket).
+    const resumeFileKey = apps?.find((a) => a.id === id)?.resumeFileKey ?? null;
     try {
       await apiFetch(`/api/v1/applications/${id}`, { method: 'DELETE' });
+      if (resumeFileKey) deleteResume(resumeFileKey).catch(() => {});
       setApps((prev) => (prev ? prev.filter((a) => a.id !== id) : prev));
       setConfirmId(null);
     } catch {
@@ -139,6 +146,12 @@ export function TrackerApp() {
             >
               Board
             </button>
+            <button
+              onClick={() => setView('insights')}
+              className={view === 'insights' ? 'rounded-md bg-elevated px-2 py-1 text-ink' : 'px-2 py-1 text-ink-3 hover:text-ink'}
+            >
+              Insights
+            </button>
           </div>
           <Button size="sm" onClick={() => setForm('new')}>
             + Add application
@@ -146,7 +159,9 @@ export function TrackerApp() {
         </div>
       </div>
 
-      {view === 'board' ? (
+      {view === 'insights' ? (
+        <TrackerInsights />
+      ) : view === 'board' ? (
         apps === null ? (
           <p className="py-8 text-center text-sm text-ink-3">Loading your tracker…</p>
         ) : apps.length === 0 ? (

@@ -15,6 +15,7 @@ import { MeProvider } from '../lib/me';
 import { MyVotesProvider } from '../lib/myVotes';
 import { AuthModal } from './AuthModal';
 import { OnboardingModal } from './OnboardingModal';
+import { FeedbackWidget } from './FeedbackWidget';
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -25,6 +26,7 @@ export function Providers({ children }: { children: ReactNode }) {
             {children}
             <AuthModal />
             <OnboardingModal />
+            <FeedbackWidget />
           </MyVotesProvider>
         </MeProvider>
       </AuthModalProvider>

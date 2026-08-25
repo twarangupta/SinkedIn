@@ -6,11 +6,15 @@
 
 import type { NextFunction, Request, Response } from 'express';
 import { ApplicationStatus } from '@prisma/client';
+import { getInsights } from '../services/applicationInsights.service.js';
 import {
+  applicationsExportToCsv,
   createApplication,
   deleteApplication,
+  exportApplications,
   getApplication,
   listApplications,
+  purgeTrackerData,
   summarizeApplications,
   updateApplication,
 } from '../services/applications.service.js';
@@ -28,6 +32,63 @@ export async function summarizeApplicationsHandler(
     }
     const summary = await summarizeApplications(req.user.id);
     res.json(summary);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/** GET /api/v1/applications/insights → private single-user dashboard. Auth required. */
+export async function insightsHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+    const insights = await getInsights(req.user.id);
+    res.json(insights);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /api/v1/applications/export?format=csv|json → a downloadable file of the
+ * caller's entire tracker (their PII, handed back to them). Auth required.
+ */
+export async function exportApplicationsHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+    const data = await exportApplications(req.user.id);
+    const stamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const format = req.query.format === 'csv' ? 'csv' : 'json';
+
+    if (format === 'csv') {
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="sinkedin-tracker-${stamp}.csv"`,
+      );
+      res.send(applicationsExportToCsv(data));
+      return;
+    }
+
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="sinkedin-tracker-${stamp}.json"`,
+    );
+    res.send(JSON.stringify(data, null, 2));
   } catch (err) {
     next(err);
   }
@@ -109,6 +170,28 @@ export async function updateApplicationHandler(
       req.body,
     );
     res.json({ application });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * DELETE /api/v1/applications → { deletedCount, resumeKeys }. Auth required.
+ * Hard-purges ALL of the caller's tracker data; returns the resume keys so the
+ * client can delete the matching PDFs from the private bucket.
+ */
+export async function purgeTrackerDataHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+    const result = await purgeTrackerData(req.user.id);
+    res.json(result);
   } catch (err) {
     next(err);
   }
