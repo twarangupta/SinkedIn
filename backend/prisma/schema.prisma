@@ -330,3 +330,19 @@ model InterviewRound {
 
   @@index([applicationId, position])
 }
+
+// Feedback / "message the owner" — complaints and suggestions from anyone
+// (signed in or not). Owner-only: never exposed in any public API. We store
+// every submission so nothing is lost even if the notification email fails or
+// isn't configured yet; the optional contactEmail is PII, so keep this private.
+model Feedback {
+  id           String   @id @default(uuid())
+  message      String   @db.Text
+  contactEmail String? // optional — if the sender wants a reply
+  userId       String? // set if signed in (no FK — outlives users)
+  handle       String? // sender's pseudonymous handle at submit time, if signed in
+  path         String? // page they were on, for context
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+}
