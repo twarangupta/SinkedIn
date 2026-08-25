@@ -7,8 +7,10 @@
 import type { NextFunction, Request, Response } from 'express';
 import { ApplicationStatus } from '@prisma/client';
 import {
+  applicationsExportToCsv,
   createApplication,
   deleteApplication,
+  exportApplications,
   getApplication,
   listApplications,
   summarizeApplications,
@@ -28,6 +30,45 @@ export async function summarizeApplicationsHandler(
     }
     const summary = await summarizeApplications(req.user.id);
     res.json(summary);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /api/v1/applications/export?format=csv|json → a downloadable file of the
+ * caller's entire tracker (their PII, handed back to them). Auth required.
+ */
+export async function exportApplicationsHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+    const data = await exportApplications(req.user.id);
+    const stamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const format = req.query.format === 'csv' ? 'csv' : 'json';
+
+    if (format === 'csv') {
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="sinkedin-tracker-${stamp}.csv"`,
+      );
+      res.send(applicationsExportToCsv(data));
+      return;
+    }
+
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="sinkedin-tracker-${stamp}.json"`,
+    );
+    res.send(JSON.stringify(data, null, 2));
   } catch (err) {
     next(err);
   }
