@@ -19,6 +19,7 @@ import {
   exportApplicationsHandler,
   getApplicationHandler,
   listApplicationsHandler,
+  purgeTrackerDataHandler,
   summarizeApplicationsHandler,
   updateApplicationHandler,
 } from '../controllers/applications.controller.js';
@@ -105,6 +106,14 @@ router.patch(
   rateLimit({ windowMs: 60_000, max: 60 }),
   validateBody(updateSchema),
   updateApplicationHandler,
+);
+// Collection-level DELETE = purge ALL of the caller's tracker data (the
+// "delete my data" control). Rate-limited: it is destructive and irreversible.
+router.delete(
+  '/',
+  requireAuth,
+  rateLimit({ windowMs: 60_000, max: 5 }),
+  purgeTrackerDataHandler,
 );
 router.delete('/:id', requireAuth, deleteApplicationHandler);
 

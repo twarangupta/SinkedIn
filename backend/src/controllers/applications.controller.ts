@@ -13,6 +13,7 @@ import {
   exportApplications,
   getApplication,
   listApplications,
+  purgeTrackerData,
   summarizeApplications,
   updateApplication,
 } from '../services/applications.service.js';
@@ -150,6 +151,28 @@ export async function updateApplicationHandler(
       req.body,
     );
     res.json({ application });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * DELETE /api/v1/applications → { deletedCount, resumeKeys }. Auth required.
+ * Hard-purges ALL of the caller's tracker data; returns the resume keys so the
+ * client can delete the matching PDFs from the private bucket.
+ */
+export async function purgeTrackerDataHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+    const result = await purgeTrackerData(req.user.id);
+    res.json(result);
   } catch (err) {
     next(err);
   }

@@ -347,3 +347,39 @@ export async function deleteApplication(userId: string, id: string) {
     data: { deletedAt: new Date() },
   });
 }
+
+/**
+ * Hard-delete ALL of the caller's tracker data (the "delete my data" control —
+ * a PII obligation). Unlike per-row delete, this is a true purge: interview
+ * rounds, status history, and applications are physically removed, including
+ * already soft-deleted rows.
+ *
+ * Resume PDFs live in a private Storage bucket the backend does not talk to
+ * (client-side RLS), so we return the affected `resumeFileKey`s for the caller
+ * to delete from storage — the DB purge and the storage purge together leave
+ * nothing behind.
+ */
+export async function purgeTrackerData(userId: string) {
+  return prisma.$transaction(async (tx) => {
+    // One read gets everything we need: the ids drive the cascade delete, and
+    // the resume keys are returned so the client can remove the matching PDFs
+    // from the private bucket.
+    const apps = await tx.application.findMany({
+      where: { userId },
+      select: { id: true, resumeFileKey: true },
+    });
+    const ids = apps.map((a) => a.id);
+    const resumeKeys = apps
+      .map((a) => a.resumeFileKey)
+      .filter((k): k is string => !!k);
+
+    if (ids.length > 0) {
+      // Delete children first (FKs point at Application), then the applications.
+      await tx.interviewRound.deleteMany({ where: { applicationId: { in: ids } } });
+      await tx.applicationEvent.deleteMany({ where: { applicationId: { in: ids } } });
+      await tx.application.deleteMany({ where: { id: { in: ids } } });
+    }
+
+    return { deletedCount: ids.length, resumeKeys };
+  });
+}

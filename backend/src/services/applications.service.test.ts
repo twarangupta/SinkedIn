@@ -13,6 +13,7 @@ import {
   exportApplications,
   getApplication,
   listApplications,
+  purgeTrackerData,
   updateApplication,
 } from './applications.service.js';
 
@@ -261,6 +262,43 @@ describe('exportApplications', () => {
     expect(lines[0]).toContain('Company');
     expect(lines).toHaveLength(2); // header + one application
     expect(lines[1]).toContain('Stripe');
+  });
+});
+
+describe('purgeTrackerData', () => {
+  it('hard-deletes all of the caller\'s applications, rounds, and events', async () => {
+    const a = await createApplication(userId, { company: 'Google', role: 'L4', status: 'APPLIED' });
+    await prisma.interviewRound.create({
+      data: { applicationId: a.id, position: 1, type: 'TECHNICAL', result: 'PENDING' },
+    });
+    const soft = await createApplication(userId, { company: 'Meta', role: 'E4' });
+    await deleteApplication(userId, soft.id); // even soft-deleted rows are purged
+
+    const result = await purgeTrackerData(userId);
+    expect(result.deletedCount).toBe(2);
+    expect(await prisma.application.count({ where: { userId } })).toBe(0);
+    expect(await prisma.interviewRound.count()).toBe(0);
+    expect(await prisma.applicationEvent.count()).toBe(0);
+  });
+
+  it('returns the resume keys so the caller can purge storage', async () => {
+    const key = `${crypto.randomUUID()}/${crypto.randomUUID()}.pdf`;
+    await createApplication(userId, {
+      company: 'Stripe',
+      role: 'SWE',
+      resumeFileKey: key,
+      resumeFileName: 'resume.pdf',
+    });
+    const result = await purgeTrackerData(userId);
+    expect(result.resumeKeys).toEqual([key]);
+  });
+
+  it('never touches another user\'s data', async () => {
+    await createApplication(userId, { company: 'Mine', role: 'r' });
+    await createApplication(otherId, { company: 'Theirs', role: 'r' });
+
+    await purgeTrackerData(userId);
+    expect(await prisma.application.count({ where: { userId: otherId } })).toBe(1);
   });
 });
 
