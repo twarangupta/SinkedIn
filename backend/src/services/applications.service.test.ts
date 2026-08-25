@@ -7,8 +7,10 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '../lib/prisma.js';
 import {
+  applicationsExportToCsv,
   createApplication,
   deleteApplication,
+  exportApplications,
   getApplication,
   listApplications,
   updateApplication,
@@ -217,6 +219,48 @@ describe('status history (ApplicationEvent)', () => {
     });
     // SAVED (create) → OA → INTERVIEW == 3 events; the notes-only edit adds none.
     expect(events.map((e) => e.status)).toEqual(['SAVED', 'OA', 'INTERVIEW']);
+  });
+});
+
+describe('exportApplications', () => {
+  it('returns only the caller\'s applications, with rounds and status history', async () => {
+    const mine = await createApplication(userId, {
+      company: 'Google',
+      role: 'L4',
+      status: 'APPLIED',
+    });
+    await createApplication(otherId, { company: 'Secret Corp', role: 'x' });
+    await prisma.interviewRound.create({
+      data: { applicationId: mine.id, position: 1, type: 'TECHNICAL', result: 'PENDING' },
+    });
+
+    const out = await exportApplications(userId);
+    expect(out.applications).toHaveLength(1);
+    const app = out.applications[0];
+    expect(app.company).toBe('Google');
+    expect(app.rounds).toHaveLength(1);
+    // Opening event logged on create.
+    expect(app.events.map((e) => e.status)).toEqual(['APPLIED']);
+    // Never leaks another user's rows.
+    expect(out.applications.some((a) => a.company === 'Secret Corp')).toBe(false);
+  });
+
+  it('includes soft-deleted applications (still the user\'s data)', async () => {
+    const app = await createApplication(userId, { company: 'Zomato', role: 'r' });
+    await deleteApplication(userId, app.id);
+
+    const out = await exportApplications(userId);
+    expect(out.applications).toHaveLength(1);
+    expect(out.applications[0].deletedAt).not.toBeNull();
+  });
+
+  it('serializes to CSV with a header row and one row per application', async () => {
+    await createApplication(userId, { company: 'Stripe', role: 'SWE' });
+    const csv = applicationsExportToCsv(await exportApplications(userId));
+    const lines = csv.replace(/^﻿/, '').split('\r\n');
+    expect(lines[0]).toContain('Company');
+    expect(lines).toHaveLength(2); // header + one application
+    expect(lines[1]).toContain('Stripe');
   });
 });
 

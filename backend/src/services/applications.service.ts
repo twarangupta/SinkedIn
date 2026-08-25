@@ -15,6 +15,7 @@
 import { Prisma, ApplicationStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../lib/errors.js';
+import { toCsv } from '../lib/csv.js';
 import { findOrCreateCompany } from './companies.service.js';
 
 export interface CreateApplicationInput {
@@ -232,6 +233,106 @@ export async function updateApplication(
     }
     return app;
   });
+}
+
+// --- Data export (Phase 2 "export my data" — a PII obligation once we store
+// real tracker data + resumes). Owner-scoped; returns EVERYTHING we hold for the
+// user, including soft-deleted rows (we still hold that PII), so the export is a
+// truthful copy of their data. ---
+
+/**
+ * The full private tracker for one user, shaped for export: every application
+ * (soft-deleted included) with its interview rounds and status history. No PII
+ * wall to apply here — it is all the caller's own data, handed back to them.
+ */
+export async function exportApplications(userId: string) {
+  const applications = await prisma.application.findMany({
+    where: { userId }, // note: no deletedAt filter — export includes deleted rows
+    orderBy: { createdAt: 'asc' },
+    select: {
+      id: true,
+      company: true,
+      role: true,
+      status: true,
+      statusOther: true,
+      jobUrl: true,
+      appliedAt: true,
+      notes: true,
+      resumeFileName: true,
+      createdAt: true,
+      updatedAt: true,
+      deletedAt: true,
+      rounds: {
+        orderBy: { position: 'asc' },
+        select: {
+          position: true,
+          type: true,
+          typeOther: true,
+          scheduledAt: true,
+          result: true,
+          notes: true,
+        },
+      },
+      events: {
+        orderBy: { createdAt: 'asc' },
+        select: { status: true, note: true, createdAt: true },
+      },
+    },
+  });
+
+  return { exportedAt: new Date().toISOString(), applications };
+}
+
+export type ApplicationsExport = Awaited<ReturnType<typeof exportApplications>>;
+
+/**
+ * Flatten an export into a spreadsheet-friendly CSV: one row per application
+ * (the primary table people want in Excel). Interview rounds are summarized into
+ * a single readable column; the JSON export carries the fully structured rounds
+ * + status history for anyone who needs them.
+ */
+export function applicationsExportToCsv(data: ApplicationsExport): string {
+  const headers = [
+    'Company',
+    'Role',
+    'Status',
+    'Status (other)',
+    'Job URL',
+    'Applied at',
+    'Notes',
+    'Resume file',
+    'Interview rounds',
+    'Created at',
+    'Updated at',
+    'Deleted at',
+  ];
+
+  const rows = data.applications.map((a) => {
+    const rounds = a.rounds
+      .map((r) => {
+        const type = r.type === 'OTHER' ? r.typeOther || 'Other' : r.type;
+        const when = r.scheduledAt ? ` (${r.scheduledAt.toISOString().slice(0, 10)})` : '';
+        return `${r.position}. ${type}${when} — ${r.result}`;
+      })
+      .join(' | ');
+
+    return [
+      a.company,
+      a.role,
+      a.status,
+      a.statusOther ?? '',
+      a.jobUrl ?? '',
+      a.appliedAt,
+      a.notes ?? '',
+      a.resumeFileName ?? '',
+      rounds,
+      a.createdAt,
+      a.updatedAt,
+      a.deletedAt ?? '',
+    ];
+  });
+
+  return toCsv(headers, rows);
 }
 
 /** Soft-delete an application the caller owns. */
