@@ -114,3 +114,29 @@ export function draftFromApplication(app: {
   }
   return draft;
 }
+
+/**
+ * Build a "Comeback" Sink draft when the user lands an offer: pre-fill the
+ * comeback category, the company, and a factual recap of THEIR OWN journey
+ * (applications / rejections / ghosts, from the tracker) — real numbers, not
+ * slop. The user writes the "what helped" story and confirms before posting.
+ */
+export function comebackDraft(
+  company: string,
+  applications: { status: ApplicationStatus }[],
+): SinkDraft {
+  const applied = applications.filter((a) => a.status !== 'SAVED').length;
+  const rejections = applications.filter((a) => a.status === 'REJECTED').length;
+  const ghosts = applications.filter((a) => a.status === 'GHOSTED').length;
+
+  const parts = [`${applied} application${applied === 1 ? '' : 's'}`];
+  if (rejections) parts.push(`${rejections} rejection${rejections === 1 ? '' : 's'}`);
+  if (ghosts) parts.push(`${ghosts} ghost${ghosts === 1 ? '' : 's'}`);
+  parts.push('1 offer');
+
+  return {
+    categorySlug: 'comeback',
+    company: company.trim() || undefined,
+    body: `The numbers: ${parts.join(', ')}.\n\nWhat actually helped:\n`,
+  };
+}

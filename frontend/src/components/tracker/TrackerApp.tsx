@@ -21,6 +21,7 @@ import { shortDate } from '../../lib/format';
 import { Button } from '../ui/Button';
 import { ApplicationForm } from './ApplicationForm';
 import { CompanyLogo } from './CompanyLogo';
+import { ComebackNudge } from './ComebackNudge';
 import { TrackerBoard } from './TrackerBoard';
 import { TrackerInsights } from './TrackerInsights';
 import { STATUS_ORDER, STATUS_LABEL, STATUS_PILL } from './status';
@@ -46,6 +47,8 @@ export function TrackerApp() {
   }, [paramStatus]);
   const [form, setForm] = useState<null | 'new' | Application>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  // The application that just became an OFFER, so we can nudge a Comeback post.
+  const [comebackApp, setComebackApp] = useState<Application | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -87,6 +90,8 @@ export function TrackerApp() {
         { method: 'PATCH', body: JSON.stringify({ status: next }) },
       );
       upsert(application);
+      // Just crossed into OFFER → celebrate + nudge a Comeback post.
+      if (next === 'OFFER' && app.status !== 'OFFER') setComebackApp(application);
     } catch {
       /* leave as-is; the select will snap back on next render */
     }
@@ -291,7 +296,11 @@ export function TrackerApp() {
         <ApplicationForm
           existing={form === 'new' ? undefined : form}
           onClose={() => setForm(null)}
-          onSaved={upsert}
+          onSaved={(app) => {
+            const prevStatus = form !== 'new' && form ? form.status : null;
+            upsert(app);
+            if (app.status === 'OFFER' && prevStatus !== 'OFFER') setComebackApp(app);
+          }}
           onRoundsChange={(rounds) =>
             setApps((prev) =>
               prev && form !== 'new' && form
@@ -299,6 +308,14 @@ export function TrackerApp() {
                 : prev,
             )
           }
+        />
+      )}
+
+      {comebackApp && (
+        <ComebackNudge
+          app={comebackApp}
+          applications={apps ?? []}
+          onClose={() => setComebackApp(null)}
         />
       )}
     </div>
