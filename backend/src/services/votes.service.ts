@@ -10,21 +10,63 @@
 import type { PrismaClient, VoteValue } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../lib/errors.js';
+import {
+  createNotifications,
+  BUOY_MILESTONES,
+  highestMilestone,
+} from './notifications.service.js';
 
 type Tx = Omit<
   PrismaClient,
   '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
 >;
 
-/** Recompute buoys - anchors and cache it on the Sink. Returns the new score. */
-async function recomputeScore(tx: Tx, sinkId: string): Promise<number> {
-  const [buoys, anchors] = await Promise.all([
+/** A buoy-milestone notification to fire AFTER the vote transaction commits. */
+type BuoyNotify = { ownerId: string; count: number } | null;
+
+/**
+ * Recompute buoys - anchors, cache it on the Sink, and detect a NEW buoy
+ * milestone. The milestone is on the raw buoy count (upvotes), fires once per
+ * threshold (tracked by `Sink.notifiedBuoyMilestone`), and returns a descriptor
+ * so the caller can notify the owner outside the transaction (best-effort).
+ */
+async function recomputeScore(
+  tx: Tx,
+  sinkId: string,
+): Promise<{ score: number; buoyNotify: BuoyNotify }> {
+  const [buoys, anchors, sink] = await Promise.all([
     tx.vote.count({ where: { sinkId, value: 'BUOY' } }),
     tx.vote.count({ where: { sinkId, value: 'ANCHOR' } }),
+    tx.sink.findUnique({
+      where: { id: sinkId },
+      select: { userId: true, notifiedBuoyMilestone: true },
+    }),
   ]);
   const score = buoys - anchors;
-  await tx.sink.update({ where: { id: sinkId }, data: { score } });
-  return score;
+
+  let buoyNotify: BuoyNotify = null;
+  const data: { score: number; notifiedBuoyMilestone?: number } = { score };
+  if (sink) {
+    const reached = highestMilestone(buoys, BUOY_MILESTONES);
+    if (reached > sink.notifiedBuoyMilestone) {
+      data.notifiedBuoyMilestone = reached;
+      buoyNotify = { ownerId: sink.userId, count: reached };
+    }
+  }
+  await tx.sink.update({ where: { id: sinkId }, data });
+  return { score, buoyNotify };
+}
+
+/** Fire a pending buoy-milestone notification (best-effort; never throws). */
+async function fireBuoyNotify(buoyNotify: BuoyNotify, sinkId: string): Promise<void> {
+  if (!buoyNotify) return;
+  try {
+    await createNotifications([
+      { userId: buoyNotify.ownerId, type: 'BUOY', count: buoyNotify.count, sinkId },
+    ]);
+  } catch {
+    // Non-fatal: the vote is already saved and the milestone is marked.
+  }
 }
 
 /**
@@ -36,7 +78,7 @@ export async function castVote(
   sinkId: string,
   value: VoteValue,
 ): Promise<{ score: number; myVote: VoteValue }> {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const sink = await tx.sink.findFirst({
       where: { id: sinkId, deletedAt: null },
       select: { id: true },
@@ -49,9 +91,11 @@ export async function castVote(
       create: { sinkId, userId, value },
     });
 
-    const score = await recomputeScore(tx, sinkId);
-    return { score, myVote: value };
+    const { score, buoyNotify } = await recomputeScore(tx, sinkId);
+    return { score, myVote: value, buoyNotify };
   });
+  await fireBuoyNotify(result.buoyNotify, sinkId);
+  return { score: result.score, myVote: result.myVote };
 }
 
 /**
@@ -68,7 +112,7 @@ export async function stepVote(
   sinkId: string,
   direction: 'UP' | 'DOWN',
 ): Promise<{ score: number; myVote: VoteValue | null }> {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const sink = await tx.sink.findFirst({
       where: { id: sinkId, deletedAt: null },
       select: { id: true },
@@ -106,9 +150,11 @@ export async function stepVote(
       }
     }
 
-    const score = await recomputeScore(tx, sinkId);
-    return { score, myVote: next };
+    const { score, buoyNotify } = await recomputeScore(tx, sinkId);
+    return { score, myVote: next, buoyNotify };
   });
+  await fireBuoyNotify(result.buoyNotify, sinkId);
+  return { score: result.score, myVote: result.myVote };
 }
 
 /**
@@ -163,7 +209,9 @@ export async function removeVote(
 ): Promise<{ score: number; myVote: null }> {
   return prisma.$transaction(async (tx) => {
     await tx.vote.deleteMany({ where: { sinkId, userId } });
-    const score = await recomputeScore(tx, sinkId);
+    // Removing a vote can only lower the buoy count, so it never crosses a NEW
+    // milestone; ignore the notify descriptor.
+    const { score } = await recomputeScore(tx, sinkId);
     return { score, myVote: null };
   });
 }

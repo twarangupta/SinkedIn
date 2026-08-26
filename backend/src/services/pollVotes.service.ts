@@ -15,6 +15,11 @@
 
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../lib/errors.js';
+import {
+  createNotifications,
+  POLL_MILESTONES,
+  highestMilestone,
+} from './notifications.service.js';
 
 /** The public shape returned after a poll vote: fresh counts + the caller's choice. */
 export interface PollVoteResult {
@@ -39,12 +44,17 @@ export async function castPollVote(
   sinkId: string,
   pollOptionId: string,
 ): Promise<PollVoteResult> {
-  return prisma.$transaction(async (tx) => {
+  const { result, pollNotify } = await prisma.$transaction(async (tx) => {
     // 1. The Sink must exist and be live; collect its poll option ids so we can
     //    validate the target and find any existing vote across the WHOLE poll.
     const sink = await tx.sink.findFirst({
       where: { id: sinkId, deletedAt: null },
-      select: { id: true, pollOptions: { select: { id: true } } },
+      select: {
+        id: true,
+        userId: true,
+        notifiedPollMilestone: true,
+        pollOptions: { select: { id: true } },
+      },
     });
     if (!sink) throw new AppError('Sink not found', 404);
 
@@ -88,6 +98,32 @@ export async function castPollVote(
       orderBy: { position: 'asc' },
     });
 
-    return { pollOptions, myPollVote };
+    // 4. Poll milestone: when the poll's TOTAL votes cross a new threshold,
+    //    notify the owner once (tracked by Sink.notifiedPollMilestone).
+    let pollNotify: { ownerId: string; count: number } | null = null;
+    const totalVotes = pollOptions.reduce((sum, o) => sum + o._count.votes, 0);
+    const reached = highestMilestone(totalVotes, POLL_MILESTONES);
+    if (reached > sink.notifiedPollMilestone) {
+      await tx.sink.update({
+        where: { id: sinkId },
+        data: { notifiedPollMilestone: reached },
+      });
+      pollNotify = { ownerId: sink.userId, count: reached };
+    }
+
+    return { result: { pollOptions, myPollVote }, pollNotify };
   });
+
+  // Fire the poll-milestone notification outside the transaction (best-effort).
+  if (pollNotify) {
+    try {
+      await createNotifications([
+        { userId: pollNotify.ownerId, type: 'POLL', count: pollNotify.count, sinkId },
+      ]);
+    } catch {
+      // Non-fatal: the vote is saved and the milestone is marked.
+    }
+  }
+
+  return result;
 }

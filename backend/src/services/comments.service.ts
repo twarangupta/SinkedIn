@@ -9,6 +9,10 @@
 import { Prisma, type PrismaClient, type VoteValue } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../lib/errors.js';
+import {
+  createNotifications,
+  type NotificationInput,
+} from './notifications.service.js';
 
 /** Fields safe to return for a comment (author reduced to id + handle). */
 const commentPublicSelect = {
@@ -32,24 +36,59 @@ export async function createComment(
 ) {
   const sink = await prisma.sink.findFirst({
     where: { id: sinkId, deletedAt: null },
-    select: { id: true },
+    select: { id: true, userId: true },
   });
   if (!sink) throw new AppError('Sink not found', 404);
 
+  let parentAuthorId: string | null = null;
   if (parentId) {
     const parent = await prisma.comment.findFirst({
       where: { id: parentId, sinkId, deletedAt: null },
-      select: { id: true },
+      select: { id: true, userId: true },
     });
     if (!parent) {
       throw new AppError('Parent comment not found on this Sink');
     }
+    parentAuthorId = parent.userId;
   }
 
-  return prisma.comment.create({
+  const comment = await prisma.comment.create({
     data: { userId, sinkId, body, parentId: parentId ?? null },
     select: commentPublicSelect,
   });
+
+  // Notify the people whose content was replied to (best-effort — a
+  // notification failure must never fail the comment). Keyed by recipient so a
+  // person who owns both the Sink and the parent comment gets a single, more
+  // specific "reply to your comment" notification (it overwrites the Sink one).
+  const recipients = new Map<string, NotificationInput>();
+  if (sink.userId !== userId) {
+    recipients.set(sink.userId, {
+      userId: sink.userId,
+      type: 'REPLY',
+      actorId: userId,
+      sinkId,
+      commentId: null,
+    });
+  }
+  if (parentAuthorId && parentAuthorId !== userId) {
+    recipients.set(parentAuthorId, {
+      userId: parentAuthorId,
+      type: 'REPLY',
+      actorId: userId,
+      sinkId,
+      commentId: parentId,
+    });
+  }
+  if (recipients.size > 0) {
+    try {
+      await createNotifications([...recipients.values()]);
+    } catch {
+      // Non-fatal: the comment is already saved.
+    }
+  }
+
+  return comment;
 }
 
 /** All non-deleted comments for a Sink, oldest first (frontend builds the tree). */
