@@ -9,7 +9,7 @@
 > **Why this phase is the pivotal expansion:** it's the first phase that serves people who only *read* — a far larger group than posters — via discovery and SEO. That's the real growth unlock.
 
 ## What the user can newly do
-Discover via hot / top / rising, per-category hubs, and search · follow categories/users and get a personalized "your feed" · browse "Sinks mentioning [company]" · see that community intel **on the job page itself** through the companion extension's overlay · and — the big one — **arrive from Google** onto a rich interview-experience page and find a whole community behind it.
+Discover via hot / top / rising, per-category hubs, and search · follow categories/users and get a personalized "your feed" · browse "Sinks mentioning [company]" · see that community intel **on the job page itself** through the companion extension's overlay · **ask for and give referrals** (Phase 3.5, decision-gated — see below) · and — the big one — **arrive from Google** onto a rich interview-experience page and find a whole community behind it.
 
 ---
 
@@ -138,6 +138,30 @@ flowchart TD
 - **Tracker → interview-experience bridge** — when a user logs an Interview status or rounds in their private tracker, one-tap "share this as an experience" (pre-filled, they choose what's public). Solves the hubs' **cold-start** and turns tracker usage into public content. **Recommend (high leverage).**
 - **"Prepping here" focused view** — from a company page, a button that pulls its interview experiences + question bank into one prep view. Serves the reader before they even apply (the wide-door lurker). **Nice-to-have.**
 - Deliberately **not** adding: a salary product, filters/percentile charts, exact per-company scorecards (Ghost-Index fork only), or anything that reads as job listings.
+
+### Referrals — ask / give / post `[new · 2026-08-26 · the two-sided viral engine · DECISION-GATED]`
+
+> **⚠️ Do not build this without a design conversation first.** When Phase 3 starts, Claude must **ask the owner the open questions below** before writing any referral code. This is the highest-leverage *and* highest-risk feature in the phase: done right it is the two-sided viral engine; done cold it is a ghost town that dies on arrival.
+
+**What it is:** members ask for a referral at a company, and members who work there (or know someone) give one. Three surfaces: *ask for a referral* (a request tied to a `Company` + role), *offer/give a referral* (respond to a request, or post "I can refer at X"), and *post a referral opening* ("my team is hiring, DM-free flow").
+
+**Why it fits SinkedIn (and why it's viral+helpful):**
+- It is **inherently two-sided and social** — the only feature here that grows because *both* sides must show up. Referrals are the single most effective way people actually land jobs, so the help is real, not cosmetic.
+- SinkedIn's wedge is a **community of real, candid employees** venting about work. That community *is* the referrer pool a cold referrals product can never bootstrap. So referrals is an **expansion of an existing community, not a marketplace built from zero.**
+- It compounds the rest of the phase: interview experiences + company pages + "people from X are here" → a natural "ask them for a referral" call to action.
+
+**The hard problem — liquidity / cold-start.** A referrals feature with no referrers is worse than nothing (it visibly fails). So the **strict ordering rule:** community + interview-SEO must be proven *first* (real employees present), *then* turn on referrals. Never launch it into an empty room.
+
+**Pseudonymity tension (the core design question).** A referral eventually needs a real identity somewhere (a recruiter needs a real name/resume). But SinkedIn's whole promise is pseudonymity. So the bridge must be **explicit, per-referral, user-confirmed** — the seeker chooses to reveal their real details to one specific referrer for one specific request, and it never leaks back to their public handle. This is the same one-way-bridge principle as "post a Sink from this application," applied to identity. **Getting this wrong breaks the pseudonymity wall — the project's hardest boundary.**
+
+**Open questions Claude must ask before building (do not assume answers):**
+- **Identity handoff:** how much real identity is revealed, to whom, and when? Handle-only intro → then off-platform? Or a gated resume share in-app? (Ties directly to the [non-goal on DMs](README.md) — a referral thread is close to a DM, so it needs its own abuse/moderation story.)
+- **Trust & abuse:** how do we stop fake "I can refer at Google" spam, and referral-selling? Verified-employer signal (Phase 4) is relevant here.
+- **Matching model:** open request board (anyone browses/answers) vs. targeted (ask a specific member)? The former is simpler and safer; the latter is closer to DMs.
+- **Company link:** referrals hang off the existing `Company` entity (already built) — request = `{ companyId, role, seekerUserId, status }`, offer = `{ requestId or companyId, referrerUserId }`.
+- **Scope guard:** does this stay "connect two humans, then get out of the way," or creep toward being a job board / ATS (an explicit non-goal)?
+
+**Recommendation:** add referrals as an explicit **Phase 3.5**, gated behind proven Phase-2 retention *and* an active Phase-3 community. Model it on the existing `Company` FK + the one-way-bridge pattern; treat the referral thread as a new social surface that ships *with* its moderation story (per the README rule). Not before the community is real.
 
 ### Moderation console `[new · required at this scale]`
 A report **queue**, hide/restore, user warnings/suspensions, spam heuristics. Manual review doesn't scale past a point — build the tooling *before* the community outgrows it.

@@ -12,8 +12,8 @@ Each phase file also carries a **🔧 Build notes — services & decisions** bri
 |---|---|---|---|
 | 0 | [phase-0-foundation.md](phase-0-foundation.md) | Deployed empty skeleton — plumbing proven | ✅ done |
 | 1 | [phase-1-core-loop.md](phase-1-core-loop.md) | Post / feed / vote / comment (+ comment-voting, inline) / poll / react / avatars / handle picker / moderation / image upload | 🟢 code-complete (seeding + feel gate left) |
-| 2 | [phase-2-retention.md](phase-2-retention.md) | Private tracker + personal insights, companion capture extension, Comeback, digest, "not alone", notifications | ⬜ gated |
-| 3 | [phase-3-depth-and-growth.md](phase-3-depth-and-growth.md) | Discovery, follow, **interview-experience SEO hub**, extension **community overlay**, opt-in aggregate insights | ⬜ gated |
+| 2 | [phase-2-retention.md](phase-2-retention.md) | Private tracker + personal insights, companion capture extension, Comeback, digest, "not alone", notifications | 🟡 in progress (tracker + resumes + export/delete built; retention loops next) |
+| 3 | [phase-3-depth-and-growth.md](phase-3-depth-and-growth.md) | Discovery, follow, **interview-experience SEO hub**, extension **community overlay**, **referrals (3.5, decision-gated)**, opt-in aggregate insights | ⬜ gated |
 | 4 | [phase-4-trust-and-gamification.md](phase-4-trust-and-gamification.md) | Verified Sinks, Auras, ranks, resilience streak | ⬜ gated |
 | 5 | [phase-5-growth-mechanics.md](phase-5-growth-mechanics.md) | Shareable cards, Hall of Fame, market weather | ⬜ gated |
 | 6+ | [phase-6-ai-and-monetization.md](phase-6-ai-and-monetization.md) | AI roast/translate/auto-fill; honest-employer revenue | ⬜ gated |
@@ -109,6 +109,18 @@ Buoys (up) + Anchors (down); `score` = buoys − anchors, cached. A single user'
 ## The two rules
 1. **Never skip a gate.** The Phase-1 "does the loop feel good?" gate matters most — honor it even if it means stopping.
 2. **Never build ahead of the current phase.** Build what the phase needs, ship it, prove it, move on.
+
+## The end-of-phase audit (mandatory)
+A phase is **not done** when the features are built and tests are green — it is done after a **heavy audit** passes. Run it at every phase completion, before starting the next phase, and fix what it finds:
+
+- **Dead / unused code** — unused exports, files, deps, props, routes, flags → remove.
+- **Redundant / duplicated code** — repeated logic, double queries, copy-paste → consolidate.
+- **Cleanliness** — clear names, correct layering (`routes → controllers → services → prisma`), current docstrings, no leftover TODOs / console logs / commented-out code.
+- **Scalability** — N+1 queries, missing indexes, unbounded fetches, pagination/caching where needed. Simple, but not naive.
+- **Security** — the PII/pseudonymity wall (no `email`/`supabaseUserId`/PII in public selects), authz on every private route, Zod at every boundary, no injection (SQL/CSV/XSS), safe file handling, rate limits, secrets not leaked.
+- **Consistency** — matches the decided stack + conventions; no ad-hoc drift.
+
+Prefer `/code-review` and `/security-review` as the tools. Produce a findings list (with severity), fix the cheap/safe items now, and surface anything larger as an explicit decision. This keeps each phase a clean, secure base so problems never compound across phases.
 
 ## The trademark thread (parallel to all phases)
 Resolve the IP-lawyer conversation before serious commercial weight (before Phase 6, ideally sooner). Keep "anti-LinkedIn" internal only.
