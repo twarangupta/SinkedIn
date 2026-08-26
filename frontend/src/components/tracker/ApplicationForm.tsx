@@ -9,15 +9,17 @@
  */
 
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import { apiFetch } from '../../lib/api';
 import { uploadResume, resumeSignedUrl, deleteResume } from '../../lib/uploadResume';
+import { stashSinkDraft } from '../../lib/sinkDraft';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { DownloadIcon, EditIcon, TrashIcon } from '../ui/icons';
 import { CompanyLogo } from './CompanyLogo';
 import { CompanySelect } from './CompanySelect';
 import { RoundsEditor } from './RoundsEditor';
-import { STATUS_ORDER, STATUS_LABEL } from './status';
+import { STATUS_ORDER, STATUS_LABEL, draftFromApplication } from './status';
 import type { Application, ApplicationStatus, InterviewRound } from '../../types';
 
 const fieldClass =
@@ -46,6 +48,7 @@ export function ApplicationForm({
   const [notes, setNotes] = useState(existing?.notes ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   // Resume: the currently-saved key (for download / replace-cleanup), a freshly
   // picked file (uploaded on save, so cancelling never orphans a PII file), and
@@ -146,6 +149,15 @@ export function ApplicationForm({
     } finally {
       setBusy(false);
     }
+  };
+
+  // The one-way bridge: stash a public Sink draft built from THIS application
+  // (safe fields only — never the private notes) and open the composer pre-filled.
+  // Nothing posts until the user confirms in the composer.
+  const shareAsSink = () => {
+    stashSinkDraft(draftFromApplication({ status, company, rounds: existing?.rounds }));
+    onClose();
+    router.push('/');
   };
 
   return (
@@ -302,13 +314,27 @@ export function ApplicationForm({
 
           {error && <p className="text-sm text-danger">{error}</p>}
 
-          <div className="flex justify-end gap-2">
-            <Button size="sm" variant="ghost" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button size="sm" onClick={save} disabled={busy || !company.trim() || !role.trim()}>
-              {busy ? 'Saving…' : existing ? 'Save changes' : 'Add to tracker'}
-            </Button>
+          <div className="flex items-center justify-between gap-2">
+            {/* One-way bridge: only offered once the application exists (edit mode). */}
+            {existing ? (
+              <button
+                type="button"
+                onClick={shareAsSink}
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                ↗ Post as a Sink
+              </button>
+            ) : (
+              <span />
+            )}
+            <div className="flex gap-2">
+              <Button size="sm" variant="ghost" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={save} disabled={busy || !company.trim() || !role.trim()}>
+                {busy ? 'Saving…' : existing ? 'Save changes' : 'Add to tracker'}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

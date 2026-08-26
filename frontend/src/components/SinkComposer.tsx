@@ -9,7 +9,7 @@
  * onCreated() so the feed refreshes.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../lib/auth';
 import { useAuthModal } from '../lib/authModal';
@@ -17,6 +17,7 @@ import { useMe } from '../lib/me';
 import { useRotating } from '../lib/useRotating';
 import { COMPOSER_PROMPTS } from '../lib/prompts';
 import { apiFetch } from '../lib/api';
+import { takeSinkDraft } from '../lib/sinkDraft';
 import { uploadSinkImage } from '../lib/uploadImage';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -52,6 +53,23 @@ export function SinkComposer({ categories }: { categories: Category[] }) {
   const { me } = useMe();
   // Rotating prompt so the composer feels alive and nudges honest, human posts.
   const { item: prompt, key: promptKey } = useRotating(COMPOSER_PROMPTS);
+
+  // One-way bridge: if the tracker stashed a draft ("post this application as a
+  // Sink"), pick it up once on mount and open the composer pre-filled. The user
+  // still edits and confirms — nothing posts automatically.
+  useEffect(() => {
+    const draft = takeSinkDraft();
+    if (!draft) return;
+    if (draft.categorySlug) {
+      const cat = categories.find((c) => c.slug === draft.categorySlug);
+      if (cat) setCategoryId(cat.id);
+    }
+    if (draft.company) setCompany(draft.company);
+    if (draft.conclusion) setConclusion(draft.conclusion);
+    if (draft.body) setBody(draft.body);
+    setExpanded(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [categories]);
 
   const category = categories.find((c) => c.id === categoryId);
 

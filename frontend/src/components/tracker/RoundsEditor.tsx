@@ -13,18 +13,9 @@
 import { useState } from 'react';
 import { apiFetch } from '../../lib/api';
 import { shortDate } from '../../lib/format';
+import { ROUND_TYPE_LABEL as TYPE_LABEL } from './status';
 import type { InterviewRound, InterviewRoundResult, InterviewRoundType } from '../../types';
 
-const TYPE_LABEL: Record<InterviewRoundType, string> = {
-  PHONE_SCREEN: 'Phone screen',
-  ONLINE_ASSESSMENT: 'Online assessment',
-  TECHNICAL: 'Technical',
-  SYSTEM_DESIGN: 'System design',
-  BEHAVIORAL: 'Behavioral',
-  HIRING_MANAGER: 'Hiring manager',
-  HR: 'HR',
-  OTHER: 'Other',
-};
 const TYPES = Object.keys(TYPE_LABEL) as InterviewRoundType[];
 
 const RESULT_LABEL: Record<InterviewRoundResult, string> = {
