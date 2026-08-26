@@ -28,6 +28,11 @@ import { TrackerInsights } from './TrackerInsights';
 import { STATUS_ORDER, STATUS_LABEL, STATUS_PILL } from './status';
 import type { Application, ApplicationStatus } from '../../types';
 
+// Active "waiting" stages where a long silence is worth surfacing, and how many
+// days of no movement counts as quiet (likely forgotten / ghosting in progress).
+const WAITING_STATUSES: ApplicationStatus[] = ['APPLIED', 'OA', 'INTERVIEW'];
+const STALE_DAYS = 21;
+
 export function TrackerApp() {
   const { session, loading: authLoading } = useAuth();
   const { open: openAuth } = useAuthModal();
@@ -251,9 +256,16 @@ export function TrackerApp() {
                     ? ` · ${app.rounds.length} round${app.rounds.length > 1 ? 's' : ''}`
                     : ''}
                   {app.appliedAt ? ` · applied ${shortDate(app.appliedAt)}` : ''}
-                  {app.status === 'GHOSTED' && (app.appliedAt || app.createdAt) ? (
-                    <span className="text-ink-3">
-                      {' · '}👻 ghosted {daysSince(app.appliedAt ?? app.createdAt)}d
+                  {/* "Quiet" nudge: a waiting application with no movement for a
+                      while — surfaces the ones you've forgotten / that are
+                      ghosting you, so you can follow up or mark it ghosted. */}
+                  {WAITING_STATUSES.includes(app.status) &&
+                  daysSince(app.updatedAt) >= STALE_DAYS ? (
+                    <span
+                      className="text-amber-500/90"
+                      title="No movement in a while — follow up, or mark it ghosted"
+                    >
+                      {' · '}⏳ quiet {daysSince(app.updatedAt)}d
                     </span>
                   ) : null}
                   {app.jobUrl ? (
