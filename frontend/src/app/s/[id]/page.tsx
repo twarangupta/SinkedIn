@@ -48,6 +48,15 @@ export default async function SinkPage({
           ← Back to feed
         </Link>
         <SinkCard sink={sink} expandable={false} />
+        {sink.companyCohortCount && sink.companyCohortCount > 0 ? (
+          <div className="rounded-xl border border-line bg-elevated/40 px-4 py-3 text-sm text-ink-2">
+            🌊 You&apos;re not alone.{' '}
+            <span className="font-medium text-ink">{sink.companyCohortCount}</span>{' '}
+            {sink.companyCohortCount === 1 ? 'other person' : 'others'} posted about
+            being rejected or ghosted by{' '}
+            <span className="font-medium text-ink">{sink.company}</span> this month.
+          </div>
+        ) : null}
         <CommentSection sinkId={sink.id} comments={comments} />
       </div>
     </div>

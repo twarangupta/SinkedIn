@@ -75,6 +75,12 @@ export interface Sink {
   myVote: 'BUOY' | 'ANCHOR' | null;
   /** The poll option id the current user chose (null if none / anonymous). */
   myPollVote: string | null;
+  /**
+   * "You're not alone" count: other rejection/ghost Sinks about the same company
+   * in the last 30 days. Only populated on the single-Sink read; solidarity
+   * vibes, not a precise stat.
+   */
+  companyCohortCount?: number;
 }
 
 /** Private job-tracker (Phase 2). Owner-only — never a public/pseudonymous shape. */

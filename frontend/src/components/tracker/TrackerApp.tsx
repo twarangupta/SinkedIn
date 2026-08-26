@@ -17,8 +17,9 @@ import { useAuth } from '../../lib/auth';
 import { useAuthModal } from '../../lib/authModal';
 import { apiFetch } from '../../lib/api';
 import { deleteResume } from '../../lib/uploadResume';
-import { shortDate } from '../../lib/format';
+import { shortDate, daysSince } from '../../lib/format';
 import { Button } from '../ui/Button';
+import { Confetti } from '../Confetti';
 import { ApplicationForm } from './ApplicationForm';
 import { CompanyLogo } from './CompanyLogo';
 import { ComebackNudge } from './ComebackNudge';
@@ -49,6 +50,14 @@ export function TrackerApp() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   // The application that just became an OFFER, so we can nudge a Comeback post.
   const [comebackApp, setComebackApp] = useState<Application | null>(null);
+  // Full-screen party popper on landing an offer (independent of the nudge modal).
+  const [celebrate, setCelebrate] = useState(false);
+
+  // Fire the offer celebration: confetti + the Comeback nudge.
+  const celebrateOffer = (app: Application) => {
+    setCelebrate(true);
+    setComebackApp(app);
+  };
 
   const load = useCallback(async () => {
     try {
@@ -91,7 +100,7 @@ export function TrackerApp() {
       );
       upsert(application);
       // Just crossed into OFFER → celebrate + nudge a Comeback post.
-      if (next === 'OFFER' && app.status !== 'OFFER') setComebackApp(application);
+      if (next === 'OFFER' && app.status !== 'OFFER') celebrateOffer(application);
     } catch {
       /* leave as-is; the select will snap back on next render */
     }
@@ -242,6 +251,11 @@ export function TrackerApp() {
                     ? ` · ${app.rounds.length} round${app.rounds.length > 1 ? 's' : ''}`
                     : ''}
                   {app.appliedAt ? ` · applied ${shortDate(app.appliedAt)}` : ''}
+                  {app.status === 'GHOSTED' && (app.appliedAt || app.createdAt) ? (
+                    <span className="text-ink-3">
+                      {' · '}👻 ghosted {daysSince(app.appliedAt ?? app.createdAt)}d
+                    </span>
+                  ) : null}
                   {app.jobUrl ? (
                     <>
                       {' · '}
@@ -299,7 +313,7 @@ export function TrackerApp() {
           onSaved={(app) => {
             const prevStatus = form !== 'new' && form ? form.status : null;
             upsert(app);
-            if (app.status === 'OFFER' && prevStatus !== 'OFFER') setComebackApp(app);
+            if (app.status === 'OFFER' && prevStatus !== 'OFFER') celebrateOffer(app);
           }}
           onRoundsChange={(rounds) =>
             setApps((prev) =>
@@ -310,6 +324,8 @@ export function TrackerApp() {
           }
         />
       )}
+
+      {celebrate && <Confetti onDone={() => setCelebrate(false)} />}
 
       {comebackApp && (
         <ComebackNudge

@@ -41,6 +41,13 @@ export function shortDate(iso: string | null): string {
   });
 }
 
+/** Whole days elapsed since an ISO date (0 if in the future/invalid). */
+export function daysSince(iso: string | null): number {
+  if (!iso) return 0;
+  const ms = Date.now() - new Date(iso).getTime();
+  return ms > 0 ? Math.floor(ms / 86_400_000) : 0;
+}
+
 /** Compact relative time, e.g. "just now", "5m ago", "3h ago", "2d ago". */
 export function timeAgo(iso: string): string {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);

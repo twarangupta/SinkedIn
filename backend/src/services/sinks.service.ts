@@ -259,15 +259,71 @@ export async function getFeed(options: {
   return { sinks, nextCursor };
 }
 
+// Categories/outcomes that count as a "rejected or ghosted by X" story, used by
+// the "you're not alone" solidarity counter below.
+const COHORT_SLUGS = ['rejection', 'ghosted'];
+
+/**
+ * "You're not alone" counter: how many OTHER rejection/ghost Sinks about the
+ * same company were posted in the last 30 days. Solidarity vibes, not a precise
+ * statistic. Prefers the reliable company FK, falling back to a case-insensitive
+ * match on the free-text company. Returns 0 when it doesn't apply.
+ */
+async function countCompanyCohort(args: {
+  excludeId: string;
+  companyId: string | null;
+  company: string | null;
+  categorySlug: string;
+  conclusion: Conclusion | null;
+}): Promise<number> {
+  const isRejectGhost =
+    COHORT_SLUGS.includes(args.categorySlug) ||
+    args.conclusion === 'REJECTED' ||
+    args.conclusion === 'GHOSTED';
+  if (!isRejectGhost) return 0;
+
+  const companyWhere: Prisma.SinkWhereInput | null = args.companyId
+    ? { companyId: args.companyId }
+    : args.company
+      ? { company: { equals: args.company, mode: 'insensitive' } }
+      : null;
+  if (!companyWhere) return 0;
+
+  const since = new Date(Date.now() - 30 * 86_400_000);
+  return prisma.sink.count({
+    where: {
+      id: { not: args.excludeId },
+      deletedAt: null,
+      createdAt: { gte: since },
+      ...companyWhere,
+      OR: [
+        { category: { slug: { in: COHORT_SLUGS } } },
+        { conclusion: { in: ['REJECTED', 'GHOSTED'] } },
+      ],
+    },
+  });
+}
+
 /** A single Sink by id (for the detail page / per-Sink URL). */
 export async function getSinkById(id: string, userId?: string) {
   const sink = await prisma.sink.findFirst({
     where: { id, deletedAt: null },
-    select: sinkPublicSelect,
+    select: { ...sinkPublicSelect, companyId: true },
   });
   if (!sink) throw new AppError('Sink not found', 404);
-  const [withState] = await attachMyState([sink], userId);
-  return withState;
+
+  // Strip the internal companyId back off the public shape after using it.
+  const { companyId, ...pub } = sink;
+  const [withState] = await attachMyState([pub], userId);
+
+  const companyCohortCount = await countCompanyCohort({
+    excludeId: id,
+    companyId,
+    company: sink.company ?? null,
+    categorySlug: sink.category.slug,
+    conclusion: sink.conclusion,
+  });
+  return { ...withState, companyCohortCount };
 }
 
 /**
