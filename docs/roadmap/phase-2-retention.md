@@ -27,8 +27,13 @@
 - **`Company` was un-deferred** — the Phase-1 "no Company table unless asked (Ghost-Index fork)" rule was consciously reversed; `Company` is now the shared identity for future insights. Free-text `company` kept alongside `companyId`.
 - **Status history is now first-class** (`ApplicationEvent`) — the original plan lacked it; this is what makes the "Future insights" questions answerable.
 
+**Built (2026-08-26): in-app notifications.** A header **bell** (unread badge + dropdown) with `Notification` + `/api/v1/notifications` (list, unread count, mark read), owner-scoped. Triggers: **REPLY** (comment on your Sink / reply to your comment, never self), **BUOY milestone** and **POLL milestone** (fire once when buoys / total poll votes cross 10/25/50/100…, tracked by `Sink.notifiedBuoyMilestone` / `notifiedPollMilestone`, so never per-vote or on oscillation). The actor is stored **by reference** (`Notification.actorId → User`) and the handle is resolved at read time, so a handle change is never frozen into a stale notification.
+
+**Backlog (deferred by owner 2026-08-26 — decisions locked, ready to build later):**
+- **Weekly digest email.** Design fixed as **Option A**: a **personal recap** (tracker + your Sinks' engagement this week) **+ community highlights** (best Sinks of the week grouped by category: Layoff / Salary / Advice / Interview Experience / Comeback), on-brand voice. **No per-event email** (fatigue), **no external/editorial content** (off-mission). Reuses the `lib/email.ts` Resend wrapper already shipped for feedback; needs `RESEND_API_KEY` on Render to actually send. Remaining slices: `EmailPrefs` (weekly toggle, unsubscribe-first) + Settings toggle + unsubscribe endpoint; the digest builder (personal + community-highlights query); the send. **Scheduling decision still open** (recommended: a GitHub Action on a cron hitting a protected backend endpoint). Owner will decide when to pick this up.
+
 **Next (not yet built):**
-- **In-app notifications + weekly digest** (the actual retention drivers for this phase's exit gate). The digest reuses the `lib/email.ts` Resend wrapper already shipped for feedback.
+- **Retention analytics** — the exit-gate metric (do people return across weeks). Lightweight, privacy-respecting.
 - `Job` + `Application.jobId` (source, externalId, snapshot, location, salary) with an **idempotent upsert** for the Chrome extension.
 - **Full account deletion** — removing the Supabase Auth user + all public content, distinct from the tracker-data purge that already ships.
 - k-anonymity-gated company-insight rollups (crosses users → Phase 3, gated).
