@@ -12,6 +12,7 @@ import { useMe } from '../../lib/me';
 import { Button } from '../ui/Button';
 import { BoatMark } from '../BoatMark';
 import { ProfileMenu } from '../ProfileMenu';
+import { NotificationBell } from '../NotificationBell';
 import { MobileMenu } from './MobileMenu';
 
 export function Header() {
@@ -38,6 +39,8 @@ export function Header() {
           className="hidden h-10 min-w-0 max-w-2xl flex-1 rounded-lg border border-line bg-elevated px-3 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-primary md:block"
         />
         <nav className="ml-auto flex shrink-0 items-center justify-end gap-1">
+          {/* In-app notifications bell (signed-in only, all breakpoints). */}
+          {session && me && <NotificationBell />}
           {/* Desktop: profile menu / sign in. */}
           <div className="hidden items-center lg:flex">
             {session ? (

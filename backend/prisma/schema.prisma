@@ -37,6 +37,8 @@ model User {
   reports        Report[]
   bookmarks      Bookmark[]
   applications   Application[]
+  notifications      Notification[] @relation("NotificationRecipient") // received
+  actedNotifications Notification[] @relation("NotificationActor") // triggered by this user
 }
 
 // A Sink is a Reddit-style post: always a title + body, categorized by a category.
@@ -65,6 +67,11 @@ model Sink {
   isVerified Boolean   @default(false) // Phase 4 — always false in Phase 1
   deletedAt  DateTime? // soft delete, never hard-delete
   createdAt  DateTime  @default(now())
+
+  // Highest milestone the owner has already been notified about, so buoy/poll
+  // notifications fire once per milestone (not per vote) and never on oscillation.
+  notifiedBuoyMilestone Int @default(0)
+  notifiedPollMilestone Int @default(0)
 
   votes       Vote[]
   comments    Comment[]
@@ -329,6 +336,36 @@ model InterviewRound {
   updatedAt     DateTime             @updatedAt
 
   @@index([applicationId, position])
+}
+
+// In-app notifications (Phase 2 retention). A small, fixed set that pairs with
+// the weekly digest. Denormalized `actorHandle` so rendering needs no join, and
+// pseudonymous by construction (only a handle, never PII). `sinkId`/`commentId`
+// are plain ids for linking (no FK — a soft-deleted target still resolves).
+enum NotificationType {
+  REPLY // someone commented on your Sink or replied to your comment
+  BUOY // your Sink crossed a buoy milestone (10/25/50/100)
+  POLL // your poll crossed a vote milestone
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String // recipient
+  user      User             @relation("NotificationRecipient", fields: [userId], references: [id])
+  type      NotificationType
+  // Who triggered it, stored as a REFERENCE (not a snapshot) so the CURRENT
+  // handle is resolved at read time — handles are user-changeable, so a snapshot
+  // would go stale. Null for cumulative BUOY/POLL (no single actor).
+  actorId   String?
+  actor     User?            @relation("NotificationActor", fields: [actorId], references: [id])
+  count     Int? // milestone value for BUOY/POLL (e.g. 25 buoys); null for REPLY
+  sinkId    String? // Sink to link to
+  commentId String? // comment to anchor to (reply-to-comment)
+  readAt    DateTime? // null = unread
+  createdAt DateTime         @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
 }
 
 // Feedback / "message the owner" — complaints and suggestions from anyone
