@@ -15,6 +15,7 @@ import { Prisma, type Conclusion, type VoteValue } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../lib/errors.js';
 import { findOrCreateCompany } from './companies.service.js';
+import { getMyReactions } from './reactions.service.js';
 
 export interface CreateSinkInput {
   categoryId: string;
@@ -52,8 +53,11 @@ const sinkPublicSelect = {
   conclusion: true,
   conclusionOther: true,
   score: true,
+  reactionCounts: true, // cached per-kind reaction tallies
   createdAt: true,
-  category: { select: { id: true, name: true, slug: true, color: true } },
+  category: {
+    select: { id: true, name: true, slug: true, color: true, reactions: true },
+  },
   user: { select: { id: true, handle: true, avatarId: true } },
   pollOptions: {
     select: {
@@ -149,6 +153,7 @@ type SinkWithMyState = Omit<SinkRow, 'comments'> & {
   topComment: TopComment | null;
   myVote: VoteValue | null;
   myPollVote: string | null;
+  myReaction: string | null;
 };
 
 /**
@@ -167,6 +172,7 @@ async function attachMyState(
       topComment: comments[0] ?? null,
       myVote: null,
       myPollVote: null,
+      myReaction: null,
     }));
   }
 
@@ -195,11 +201,15 @@ async function attachMyState(
     }
   }
 
+  // The caller's one reaction per Sink, batched.
+  const reactionBySink = await getMyReactions(userId, sinks.map((s) => s.id));
+
   return sinks.map(({ comments, ...s }) => ({
     ...s,
     topComment: comments[0] ?? null,
     myVote: voteBySink.get(s.id) ?? null,
     myPollVote: pollVoteBySink.get(s.id) ?? null,
+    myReaction: reactionBySink.get(s.id) ?? null,
   }));
 }
 

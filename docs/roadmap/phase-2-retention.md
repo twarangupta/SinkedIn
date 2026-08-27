@@ -29,6 +29,13 @@
 
 **Built (2026-08-26): in-app notifications.** A header **bell** (unread badge + dropdown) with `Notification` + `/api/v1/notifications` (list, unread count, mark read), owner-scoped. Triggers: **REPLY** (comment on your Sink / reply to your comment, never self), **BUOY milestone** and **POLL milestone** (fire once when buoys / total poll votes cross 10/25/50/100…, tracked by `Sink.notifiedBuoyMilestone` / `notifiedPollMilestone`, so never per-vote or on oscillation). The actor is stored **by reference** (`Notification.actorId → User`) and the handle is resolved at read time, so a handle change is never frozen into a stale notification.
 
+**Built (2026-08-26): the retention batch.**
+- **One-way tracker → Sink bridge** — "Post as a Sink" from a tracked application pre-fills the composer (status→category+outcome, company, interview-round-*type* scaffold; never the private notes). Handoff via `sessionStorage` (no PII in the URL); nothing posts until the user confirms. Reused for the Comeback flow.
+- **Comeback flow** — marking an application OFFER fires full-screen **confetti** (dependency-free CSS) + a "Post a Comeback" nudge pre-filled with the user's real journey numbers.
+- **"You're not alone" counter** — the single-Sink read returns `companyCohortCount` (other rejection/ghost Sinks about the same company in the last 30 days, by company FK); shown as a solidarity banner on rejection/ghost Sink pages. Detail-page only (per-card would be a query per card).
+- **"Quiet" nudge (repurposed ghost timer)** — APPLIED/OA/Interview applications with no movement for 21+ days show "⏳ quiet Nd" (a timer on an already-GHOSTED row was redundant; this surfaces forgotten / ghosting-in-progress ones).
+- **Reactions (the Phase-1 gap, filled)** — one-tap solidarity taps, separate from voting; `Reaction` (one per user per Sink) + per-category config in `Category.reactions` (JSON) + cached `Sink.reactionCounts` (JSON). Config-driven bar on `SinkCard`; the caller's pick hydrates from the MyVotes provider. (After merge to `main`, re-run `db:seed` so prod categories get the reaction config.)
+
 **Backlog (deferred by owner 2026-08-26 — decisions locked, ready to build later):**
 - **Weekly digest email.** Design fixed as **Option A**: a **personal recap** (tracker + your Sinks' engagement this week) **+ community highlights** (best Sinks of the week grouped by category: Layoff / Salary / Advice / Interview Experience / Comeback), on-brand voice. **No per-event email** (fatigue), **no external/editorial content** (off-mission). Reuses the `lib/email.ts` Resend wrapper already shipped for feedback; needs `RESEND_API_KEY` on Render to actually send. Remaining slices: `EmailPrefs` (weekly toggle, unsubscribe-first) + Settings toggle + unsubscribe endpoint; the digest builder (personal + community-highlights query); the send. **Scheduling decision still open** (recommended: a GitHub Action on a cron hitting a protected backend endpoint). Owner will decide when to pick this up.
 
@@ -182,6 +189,12 @@ A thin browser client that saves the job on the page you're viewing straight int
 - **Adapter registry** (mirrors "categories are data, not code"): each site is one small module implementing `matches(url)` + `extract(doc) → NormalizedJob`. **Adding a site = one file, never a core change** — this is the whole maintainability story.
 - **Manifest V3**, `activeTab` + **per-host opt-in** permissions (never `<all_urls>` — better for Web Store review *and* trust), local-first storage, syncs to the tracker when signed in.
 - **Writes to the SAME private `Application` model** — no second backend; PII stays owner-only, on-brand "only the page you're on, only when you act."
+
+**Concrete capture slices (captured 2026-08 · brainstorm before building):**
+1. **"Save to SinkedIn tracker"** — one click on any job page saves company + role + jobUrl + source into the tracker (find-or-create the `Company`, like the web composer already does).
+2. **"Already applied here"** — opening a job you have tracked shows "you applied 3 weeks ago" (uses the Phase-2 `dedupeKey` / normalized company+role+location).
+3. **One-click status update** from the extension (e.g. Applied → Interview) without opening the site.
+4. **Nice-to-haves:** a keyboard shortcut to save the current job; a visible privacy indicator ("only the page you're on, only when you act"). *(Field-mapping memory, resume attach, and full autofill belong to the [Phase-6 autofill design](phase-6-ai-and-monetization.md), not here.)*
 
 ```mermaid
 graph TD

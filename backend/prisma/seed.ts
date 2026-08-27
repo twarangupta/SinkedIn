@@ -224,14 +224,60 @@ const categories: Array<{
   },
 ];
 
+// One-tap solidarity reactions per category (data, not code — the app renders
+// whatever a category provides). Categories not listed here offer no reactions.
+const REACTION_SETS: Record<string, { key: string; emoji: string; label: string }[]> = {
+  rant: [
+    { key: 'BEEN_THERE', emoji: '🫡', label: 'Been there' },
+    { key: 'IKR', emoji: '💯', label: 'IKR' },
+  ],
+  ghosted: [
+    { key: 'CLASSIC', emoji: '👻', label: 'Classic' },
+    { key: 'SAME', emoji: '🙋', label: 'Same' },
+  ],
+  rejection: [
+    { key: 'F', emoji: '🇫', label: 'F' },
+    { key: 'THEIR_LOSS', emoji: '💅', label: 'Their loss' },
+  ],
+  comeback: [
+    { key: 'LETS_GO', emoji: '🚀', label: "Let's go" },
+    { key: 'INSPIRED', emoji: '🔥', label: 'Inspired' },
+  ],
+  offer: [
+    { key: 'CONGRATS', emoji: '🎉', label: 'Congrats' },
+    { key: 'LETS_GO', emoji: '🚀', label: "Let's go" },
+  ],
+  layoff: [
+    { key: 'SOLIDARITY', emoji: '🫂', label: 'Solidarity' },
+    { key: 'THEIR_LOSS', emoji: '💅', label: 'Their loss' },
+  ],
+  'bad-boss': [
+    { key: 'BEEN_THERE', emoji: '🫡', label: 'Been there' },
+    { key: 'YIKES', emoji: '😬', label: 'Yikes' },
+  ],
+  burnout: [
+    { key: 'FELT', emoji: '🫠', label: 'Felt that' },
+    { key: 'REST', emoji: '🛌', label: 'Rest up' },
+  ],
+  win: [
+    { key: 'CONGRATS', emoji: '🎉', label: 'Congrats' },
+    { key: 'LETS_GO', emoji: '🚀', label: "Let's go" },
+  ],
+  'corporate-cringe': [
+    { key: 'LMAO', emoji: '😂', label: 'Lmao' },
+    { key: 'YIKES', emoji: '😬', label: 'Yikes' },
+  ],
+};
+
 async function main() {
   // Upsert each category keyed on its unique slug: update if it exists,
   // create if it doesn't. This makes the seed safe to re-run any time.
   for (const category of categories) {
+    const data = { ...category, reactions: REACTION_SETS[category.slug] };
     await prisma.category.upsert({
       where: { slug: category.slug },
-      update: category,
-      create: category,
+      update: data,
+      create: data,
     });
   }
 

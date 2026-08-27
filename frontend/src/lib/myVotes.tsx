@@ -33,6 +33,8 @@ interface MyVotesValue {
   pollVoteBySink: Map<string, string>;
   /** Ids of the Sinks the caller has bookmarked. */
   bookmarkedSinks: Set<string>;
+  /** sinkId → the reaction kind the caller tapped on that Sink. */
+  reactionBySink: Map<string, string>;
   /** True once the fetch has completed, so consumers only hydrate real data. */
   loaded: boolean;
 }
@@ -42,6 +44,7 @@ const EMPTY: MyVotesValue = {
   voteByComment: new Map(),
   pollVoteBySink: new Map(),
   bookmarkedSinks: new Set(),
+  reactionBySink: new Map(),
   loaded: false,
 };
 
@@ -63,6 +66,7 @@ export function MyVotesProvider({ children }: { children: ReactNode }) {
       pollVotes: { sinkId: string; pollOptionId: string }[];
       commentVotes: { commentId: string; value: Vote }[];
       bookmarks?: string[];
+      reactions?: { sinkId: string; kind: string }[];
     }>('/api/v1/users/me/votes')
       .then((res) => {
         if (cancelled) return;
@@ -75,6 +79,9 @@ export function MyVotesProvider({ children }: { children: ReactNode }) {
             res.pollVotes.map((pv) => [pv.sinkId, pv.pollOptionId]),
           ),
           bookmarkedSinks: new Set(res.bookmarks ?? []),
+          reactionBySink: new Map(
+            (res.reactions ?? []).map((r) => [r.sinkId, r.kind]),
+          ),
           loaded: true,
         });
       })
