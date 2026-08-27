@@ -39,7 +39,20 @@ sequenceDiagram
 The tempting-but-unreliable frontier (the features that *sound* magical and break constantly). All **opt-in**, all **confirmation-gated**, none on the critical path.
 - **Outcome detection (AI-assisted):** user forwards an email (or connects Gmail with explicit scope) → AI classifies *rejection / interview invite / offer* → **suggests** a tracker status update the user confirms. **Reality check:** flaky across companies/languages, privacy-heavy (email access) — *this is exactly why it lives here and not in the [Phase-2 tracker](phase-2-retention.md).* Never auto-change status without confirmation.
 - **AI-assisted extraction for hard sites:** where JSON-LD + CSS adapters fail (Workday, obfuscated pages), an LLM parses messy DOM/text into `NormalizedJob`. **Decision:** a cost-capped, cached **fallback** — structured-data-first stays the default path.
-- **Application autofill:** pre-fill ATS forms from the stored profile/resume. **Decision:** **deferred, low priority** — high maintenance, crowded space (Simplify et al.), **not SinkedIn's differentiator.** Build only if clearly demanded.
+- **Application autofill:** pre-fill ATS forms from the stored profile/resume. **Decision:** **deferred, low priority** — high maintenance, crowded space (Simplify et al.), **not SinkedIn's differentiator.** Build only if clearly demanded. Owner asked for it (2026-08); the fuller design is captured below so it's ready if/when demand is real, but the sequencing recommendation stands: ship the [Phase-2 capture slices](phase-2-retention.md) first, this last.
+
+### Applicant Profile + autofill — the full design `[captured 2026-08 · brainstorm before building]`
+The autofill data source is a **new private, owner-only `ApplicantProfile`** (one per user, real PII — never in a public select, never indexed; the pseudonymity wall applies exactly as it does to the tracker):
+- **Typed columns** (the stable, queried core): name, email, phone, location, links (LinkedIn/GitHub/portfolio/website), work authorization / visa need, years of experience, current title, `education[]`, `skills[]`, default `resumeFileKey`.
+- **One `jsonb` column** for the messy long-tail: per-site custom Q&A ("why us?"), screening-question defaults, optional EEO answers. (Typed for the core, JSON for the variable tail — the [columns-vs-JSON rule](../../CLAUDE.md).)
+
+Autofill slices (each shippable), and the extra ideas from the same discussion:
+- **Autofill a form** from the profile — content script maps fields (label/name/autocomplete heuristics first, then per-ATS adapter), user **reviews, then submits**. **Never auto-submits** (a hard rule + the "no fragile automation on the critical path" invariant).
+- **Attach a stored resume** from the private `resumes` bucket in one click.
+- **Field-mapping memory:** learn a site's field map once, reuse it (mirrors "adapters are data, one file per site").
+- **AI-tailor hook:** later, AI tweaks the profile answers per job *before* the user reviews (this phase's AI layer).
+
+**Hard privacy rules for autofill (non-negotiable):** the `ApplicantProfile` is PII → owner-only; the extension sends profile data **only to the user's own backend** and fills forms **locally in the page** — never to any third party; **per-host opt-in** permissions only (never `<all_urls>`); a visible "your profile never leaves your own account" indicator; review-then-submit always.
 
 > **Why these are last:** each adds cost, failure surface, and privacy burden for *convenience*, not for the core value (catharsis + community). Ship only on a validated product, opt-in, degrading gracefully to the manual flow.
 

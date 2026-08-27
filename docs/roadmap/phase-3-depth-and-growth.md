@@ -154,14 +154,18 @@ flowchart TD
 
 **Pseudonymity tension (the core design question).** A referral eventually needs a real identity somewhere (a recruiter needs a real name/resume). But SinkedIn's whole promise is pseudonymity. So the bridge must be **explicit, per-referral, user-confirmed** — the seeker chooses to reveal their real details to one specific referrer for one specific request, and it never leaks back to their public handle. This is the same one-way-bridge principle as "post a Sink from this application," applied to identity. **Getting this wrong breaks the pseudonymity wall — the project's hardest boundary.**
 
-**Open questions Claude must ask before building (do not assume answers):**
-- **Identity handoff:** how much real identity is revealed, to whom, and when? Handle-only intro → then off-platform? Or a gated resume share in-app? (Ties directly to the [non-goal on DMs](README.md) — a referral thread is close to a DM, so it needs its own abuse/moderation story.)
-- **Trust & abuse:** how do we stop fake "I can refer at Google" spam, and referral-selling? Verified-employer signal (Phase 4) is relevant here.
-- **Matching model:** open request board (anyone browses/answers) vs. targeted (ask a specific member)? The former is simpler and safer; the latter is closer to DMs.
-- **Company link:** referrals hang off the existing `Company` entity (already built) — request = `{ companyId, role, seekerUserId, status }`, offer = `{ requestId or companyId, referrerUserId }`.
-- **Scope guard:** does this stay "connect two humans, then get out of the way," or creep toward being a job board / ATS (an explicit non-goal)?
+**Owner decisions (locked 2026-08-27 — a full brainstorm still happens before building):**
+- ✅ **Referrer verification REQUIRED.** Only a referrer who has **verified they work at the company** (e.g. a code sent to a `name@company.com` address; ties to the Phase-4 verification work) can receive a seeker's real identity. Unverified = never sees real PII. This is the guard against the fake-referrer / resume-harvesting phishing vector.
+- ✅ **Minimal, per-referral, consensual identity handoff.** The seeker shares only **name + email + resume** (from the private `resumes` bucket), only with the **one referrer they accept**, only for **that one referral** — never tied back to their public handle. Same one-way-bridge principle as "post a Sink from this application," applied to identity.
+- ✅ **Incentive = Auras for helping**, not money. Referrers earn reputation ([Auras](phase-4-trust-and-gamification.md), helpfulness kind) for giving referrals. Do NOT build the incentive around company referral bonuses.
+- ✅ **No paid referrals — keep it clean.** Explicitly forbid selling/charging for a referral (policy-safe, on-brand, removes the sleaziest abuse vector). Enforce in terms + moderation.
+- ⏳ **Matching model — DECIDE LATER** (open request board by `Company` + role vs. targeted ask; seniority/skills matching). Revisit at the brainstorm.
 
-**Recommendation:** add referrals as an explicit **Phase 3.5**, gated behind proven Phase-2 retention *and* an active Phase-3 community. Model it on the existing `Company` FK + the one-way-bridge pattern; treat the referral thread as a new social surface that ships *with* its moderation story (per the README rule). Not before the community is real.
+**Still to settle at the pre-build brainstorm:** the exact verification mechanism (email-code now vs. full Phase-4 DKIM), the matching model (above), the moderation story for the referral thread (a new social surface — README rule), and anti-spam limits on requests/offers.
+
+**Data model (unchanged):** referrals hang off the existing `Company` entity — request = `{ companyId, role, seekerUserId, status }`, offer = `{ requestId or companyId, referrerUserId, verified }`. **Scope guard:** stays "connect two humans, then get out of the way" — never creeps toward a job board / ATS (an explicit non-goal).
+
+**Recommendation:** ship as an explicit **Phase 3.5**, gated behind proven Phase-2 retention *and* an active Phase-3 community, with the locked decisions above. **Run a dedicated brainstorm session before writing any referral code** (settle the ⏳ items), and ship it *with* its moderation story (per the README rule). Never launch it into an empty room.
 
 ### Moderation console `[new · required at this scale]`
 A report **queue**, hide/restore, user warnings/suspensions, spam heuristics. Manual review doesn't scale past a point — build the tooling *before* the community outgrows it.
@@ -199,6 +203,13 @@ graph TD
 - **Cross-board dedupe** (the Phase-2 `dedupeKey`) prevents triple-counting the same job seen on three boards.
 
 > **⚠️ Real, named-company scorecards = the Ghost Index fork (below), not a small feature.** Fuzzy text-match gives "vibes" for free; precise per-company ghost rates need canonical company identity **plus** k-anonymity, legal review, and anti-poisoning. Don't drift into it — commit deliberately.
+
+#### Two viral surfaces for this data `[idea · 2026-08 · brainstorm before building]`
+Both are *presentation layers* over the k-anonymity-gated rollups above — build them only once the signal pipeline and legal review exist. **Brainstorm the exact framing/thresholds before building.**
+- **Company Report Cards** — a per-company page: *"Amazon: 42% ghost rate, median 18 days to reply, 5.2 interview rounds."* The single most viral + useful thing here (nobody has honest ghost data) and **un-copyable** without this community. Named-company stats = the Ghost Index fork; only ever above the k-anonymity N, always framed as ranges/vibes, never false precision. This is a serious feature with legal weight (India **DPDP** / defamation), not a quick win.
+- **"Market Weather"** — a live, aggregate vibe gauge of the whole job market from community activity: *"⛈️ Rough out there: ghost sightings up 20%, response times slowing this week."* No named companies, so **much lower legal risk** than report cards, and it's a great recurring shareable + press hook. Overlaps the [Phase-5 "market weather" moments](phase-5-growth-mechanics.md); this is its data source.
+
+> **💡 Captured idea — Company Report Cards (the Ghost Index as THE moat) `[brainstorm before building]` (2026-08-26):** when this pipeline is built, surface it as a **per-company report card**: *"Amazon — 42% ghost rate · median 18 days to reply · ~5 interview rounds · salary band ₹X–Y (N reports)."* Why it's the long-term reason SinkedIn matters: **nobody has honest ghost data**, it is inherently viral ("which companies ghost the most?"), genuinely useful to job-seekers, and **un-copyable** — it needs your community and their opt-in data. It's the payoff of the FK-backed `Company` entity + `Sink.companyId` (already built) + this opt-in `Signal` pipeline. Hard gates before ANY of it ships: opt-in, k-anonymity (N ≥ threshold), **legal review (India DPDP / defamation)**, anti-poisoning, and honest ranges over false precision. Brainstorm the exact card, the abuse model, and the legal posture before building — this is the one feature where getting it wrong is a lawsuit, not a bug.
 
 ---
 
