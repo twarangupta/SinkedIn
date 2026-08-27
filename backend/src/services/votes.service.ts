@@ -33,14 +33,20 @@ type BuoyNotify = { ownerId: string; count: number } | null;
 async function recomputeScore(
   tx: Tx,
   sinkId: string,
+  detectMilestone = true,
 ): Promise<{ score: number; buoyNotify: BuoyNotify }> {
+  // The milestone lookup is only meaningful when the buoy count can RISE. On the
+  // un-vote path it can only fall, so callers pass detectMilestone=false to skip
+  // that extra read entirely.
   const [buoys, anchors, sink] = await Promise.all([
     tx.vote.count({ where: { sinkId, value: 'BUOY' } }),
     tx.vote.count({ where: { sinkId, value: 'ANCHOR' } }),
-    tx.sink.findUnique({
-      where: { id: sinkId },
-      select: { userId: true, notifiedBuoyMilestone: true },
-    }),
+    detectMilestone
+      ? tx.sink.findUnique({
+          where: { id: sinkId },
+          select: { userId: true, notifiedBuoyMilestone: true },
+        })
+      : Promise.resolve(null),
   ]);
   const score = buoys - anchors;
 
@@ -172,8 +178,9 @@ export async function getMyVoteState(userId: string): Promise<{
   pollVotes: { sinkId: string; pollOptionId: string }[];
   commentVotes: { commentId: string; value: VoteValue }[];
   bookmarks: string[];
+  reactions: { sinkId: string; kind: string }[];
 }> {
-  const [votes, pollVotes, commentVotes, bookmarks] = await Promise.all([
+  const [votes, pollVotes, commentVotes, bookmarks, reactions] = await Promise.all([
     prisma.vote.findMany({
       where: { userId },
       select: { sinkId: true, value: true },
@@ -190,6 +197,10 @@ export async function getMyVoteState(userId: string): Promise<{
       where: { userId },
       select: { sinkId: true },
     }),
+    prisma.reaction.findMany({
+      where: { userId },
+      select: { sinkId: true, kind: true },
+    }),
   ]);
   return {
     votes,
@@ -199,6 +210,7 @@ export async function getMyVoteState(userId: string): Promise<{
     })),
     commentVotes,
     bookmarks: bookmarks.map((b) => b.sinkId),
+    reactions,
   };
 }
 
@@ -210,8 +222,8 @@ export async function removeVote(
   return prisma.$transaction(async (tx) => {
     await tx.vote.deleteMany({ where: { sinkId, userId } });
     // Removing a vote can only lower the buoy count, so it never crosses a NEW
-    // milestone; ignore the notify descriptor.
-    const { score } = await recomputeScore(tx, sinkId);
+    // milestone; skip the milestone lookup entirely.
+    const { score } = await recomputeScore(tx, sinkId, false);
     return { score, myVote: null };
   });
 }

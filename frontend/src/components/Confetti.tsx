@@ -7,7 +7,7 @@
  * never blocks clicks on whatever is underneath (e.g. the Comeback nudge).
  */
 
-import { useEffect, useMemo, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, type CSSProperties } from 'react';
 
 const COLORS = ['#6366f1', '#a78bfa', '#f59e0b', '#10b981', '#ef4444', '#3b82f6', '#ec4899'];
 
@@ -35,10 +35,15 @@ export function Confetti({
     [pieces],
   );
 
+  // Keep the latest onDone in a ref so the auto-dismiss timer runs exactly once
+  // (parents pass an inline arrow that changes identity every render; depending
+  // on it directly would reset the timer and let the confetti linger).
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
   useEffect(() => {
-    const t = window.setTimeout(() => onDone?.(), durationMs);
+    const t = window.setTimeout(() => onDoneRef.current?.(), durationMs);
     return () => window.clearTimeout(t);
-  }, [durationMs, onDone]);
+  }, [durationMs]);
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[60] overflow-hidden" aria-hidden>
