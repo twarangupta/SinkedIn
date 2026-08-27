@@ -121,7 +121,7 @@ Threaded (top-level + replies via `parentId`), **optimistic append** — the pos
 ### Polls `[built]`
 2–6 options; **one vote per poll** (not per option, enforced in the service); live result bars; optimistic (highlight instant, counts from server).
 
-### Category reactions / solidarity taps `[new · retention #6]`
+### Category reactions / solidarity taps `[built — 2026-08-26, filled the Phase-1 gap during Phase 2]`
 One-tap, category-specific reactions beyond voting — Rant → "Been there" / "IKR"; Ghosted → "Classic" / "Same"; Rejection → "F" / "Their loss"; Comeback → "Let's go". A low-friction emotional layer.
 
 **Design locks:**

@@ -12,6 +12,7 @@ import {
 } from '../services/sinks.service.js';
 import { removeVote, stepVote } from '../services/votes.service.js';
 import { castPollVote } from '../services/pollVotes.service.js';
+import { toggleReaction } from '../services/reactions.service.js';
 
 /**
  * POST /api/v1/sinks → { sink }. Auth required (requireAuth set req.user).
@@ -164,6 +165,27 @@ export async function pollVoteHandler(
       req.params.id,
       req.body.pollOptionId,
     );
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/v1/sinks/:id/reaction → { reactionCounts, myReaction }. Auth
+ * required. Toggles the caller's one-tap solidarity reaction on the Sink.
+ */
+export async function reactionHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+    const result = await toggleReaction(req.user.id, req.params.id, req.body.kind);
     res.json(result);
   } catch (err) {
     next(err);

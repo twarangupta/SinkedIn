@@ -18,6 +18,7 @@ import {
   getSinkHandler,
   listSinksHandler,
   pollVoteHandler,
+  reactionHandler,
   unvoteHandler,
   updateSinkHandler,
   voteHandler,
@@ -58,6 +59,7 @@ const updateSinkSchema = z
   .strict();
 
 const voteSchema = z.object({ direction: z.enum(['UP', 'DOWN']) });
+const reactionSchema = z.object({ kind: z.string().min(1).max(40) });
 
 const pollVoteSchema = z.object({ pollOptionId: z.string().uuid() });
 
@@ -93,6 +95,7 @@ router.delete('/:id', requireAuth, deleteSinkHandler);
 
 router.post('/:id/vote', requireAuth, validateBody(voteSchema), voteHandler);
 router.delete('/:id/vote', requireAuth, unvoteHandler);
+router.post('/:id/reaction', requireAuth, validateBody(reactionSchema), reactionHandler);
 
 // Bookmarks (private to the caller; toggle save/unsave).
 router.post('/:id/bookmark', requireAuth, addBookmarkHandler);

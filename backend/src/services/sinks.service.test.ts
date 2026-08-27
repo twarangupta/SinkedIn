@@ -9,6 +9,7 @@ import {
   createSink,
   deleteSink,
   getFeed,
+  getSinkById,
   updateSink,
 } from './sinks.service.js';
 
@@ -70,6 +71,35 @@ afterAll(async () => {
   await prisma.user.deleteMany();
   await prisma.category.deleteMany();
   await prisma.$disconnect();
+});
+
+describe("getSinkById — you're not alone counter", () => {
+  it('counts other rejection/ghost Sinks about the same company', async () => {
+    const a = await createSink(userId, {
+      categoryId: interviewId,
+      title: 'Rejected at Google',
+      company: 'Google',
+      conclusion: 'REJECTED',
+    });
+    await createSink(userId, {
+      categoryId: interviewId,
+      title: 'Also rejected by Google',
+      company: 'Google',
+      conclusion: 'REJECTED',
+    });
+    const got = await getSinkById(a.id);
+    expect(got.companyCohortCount).toBe(1); // the OTHER Google rejection
+  });
+
+  it('is 0 for a Sink that is not a rejection/ghost', async () => {
+    const d = await createSink(userId, {
+      categoryId: discussionId,
+      title: 'just chatting',
+      body: 'x',
+    });
+    const got = await getSinkById(d.id);
+    expect(got.companyCohortCount).toBe(0);
+  });
 });
 
 describe('getFeed — top comment preview', () => {

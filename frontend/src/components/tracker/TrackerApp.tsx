@@ -17,14 +17,21 @@ import { useAuth } from '../../lib/auth';
 import { useAuthModal } from '../../lib/authModal';
 import { apiFetch } from '../../lib/api';
 import { deleteResume } from '../../lib/uploadResume';
-import { shortDate } from '../../lib/format';
+import { shortDate, daysSince } from '../../lib/format';
 import { Button } from '../ui/Button';
+import { Confetti } from '../Confetti';
 import { ApplicationForm } from './ApplicationForm';
 import { CompanyLogo } from './CompanyLogo';
+import { ComebackNudge } from './ComebackNudge';
 import { TrackerBoard } from './TrackerBoard';
 import { TrackerInsights } from './TrackerInsights';
 import { STATUS_ORDER, STATUS_LABEL, STATUS_PILL } from './status';
 import type { Application, ApplicationStatus } from '../../types';
+
+// Active "waiting" stages where a long silence is worth surfacing, and how many
+// days of no movement counts as quiet (likely forgotten / ghosting in progress).
+const WAITING_STATUSES: ApplicationStatus[] = ['APPLIED', 'OA', 'INTERVIEW'];
+const STALE_DAYS = 21;
 
 export function TrackerApp() {
   const { session, loading: authLoading } = useAuth();
@@ -46,6 +53,16 @@ export function TrackerApp() {
   }, [paramStatus]);
   const [form, setForm] = useState<null | 'new' | Application>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  // The application that just became an OFFER, so we can nudge a Comeback post.
+  const [comebackApp, setComebackApp] = useState<Application | null>(null);
+  // Full-screen party popper on landing an offer (independent of the nudge modal).
+  const [celebrate, setCelebrate] = useState(false);
+
+  // Fire the offer celebration: confetti + the Comeback nudge.
+  const celebrateOffer = (app: Application) => {
+    setCelebrate(true);
+    setComebackApp(app);
+  };
 
   const load = useCallback(async () => {
     try {
@@ -87,6 +104,8 @@ export function TrackerApp() {
         { method: 'PATCH', body: JSON.stringify({ status: next }) },
       );
       upsert(application);
+      // Just crossed into OFFER → celebrate + nudge a Comeback post.
+      if (next === 'OFFER' && app.status !== 'OFFER') celebrateOffer(application);
     } catch {
       /* leave as-is; the select will snap back on next render */
     }
@@ -237,6 +256,18 @@ export function TrackerApp() {
                     ? ` · ${app.rounds.length} round${app.rounds.length > 1 ? 's' : ''}`
                     : ''}
                   {app.appliedAt ? ` · applied ${shortDate(app.appliedAt)}` : ''}
+                  {/* "Quiet" nudge: a waiting application with no movement for a
+                      while — surfaces the ones you've forgotten / that are
+                      ghosting you, so you can follow up or mark it ghosted. */}
+                  {WAITING_STATUSES.includes(app.status) &&
+                  daysSince(app.updatedAt) >= STALE_DAYS ? (
+                    <span
+                      className="text-amber-500/90"
+                      title="No movement in a while — follow up, or mark it ghosted"
+                    >
+                      {' · '}⏳ quiet {daysSince(app.updatedAt)}d
+                    </span>
+                  ) : null}
                   {app.jobUrl ? (
                     <>
                       {' · '}
@@ -291,7 +322,11 @@ export function TrackerApp() {
         <ApplicationForm
           existing={form === 'new' ? undefined : form}
           onClose={() => setForm(null)}
-          onSaved={upsert}
+          onSaved={(app) => {
+            const prevStatus = form !== 'new' && form ? form.status : null;
+            upsert(app);
+            if (app.status === 'OFFER' && prevStatus !== 'OFFER') celebrateOffer(app);
+          }}
           onRoundsChange={(rounds) =>
             setApps((prev) =>
               prev && form !== 'new' && form
@@ -299,6 +334,16 @@ export function TrackerApp() {
                 : prev,
             )
           }
+        />
+      )}
+
+      {celebrate && <Confetti onDone={() => setCelebrate(false)} />}
+
+      {comebackApp && (
+        <ComebackNudge
+          app={comebackApp}
+          applications={apps ?? []}
+          onClose={() => setComebackApp(null)}
         />
       )}
     </div>

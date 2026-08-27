@@ -53,6 +53,13 @@ export interface PollOption {
   _count: { votes: number };
 }
 
+/** A one-tap solidarity reaction option offered by a category. */
+export interface ReactionOption {
+  key: string;
+  emoji: string;
+  label: string;
+}
+
 export interface Sink {
   id: string;
   title: string;
@@ -65,7 +72,18 @@ export interface Sink {
   conclusionOther: string | null;
   score: number;
   createdAt: string;
-  category: { id: string; name: string; slug: string; color: string };
+  category: {
+    id: string;
+    name: string;
+    slug: string;
+    color: string;
+    /** One-tap reactions this category offers (null when it offers none). */
+    reactions?: ReactionOption[] | null;
+  };
+  /** Cached per-kind reaction tallies, e.g. { BEEN_THERE: 5 }. */
+  reactionCounts?: Record<string, number>;
+  /** The caller's chosen reaction on this Sink (null if none / anonymous). */
+  myReaction?: string | null;
   user: PublicUser;
   /** The highest-scored top-level comment, previewed in the feed (null if none). */
   topComment: TopComment | null;
@@ -75,6 +93,12 @@ export interface Sink {
   myVote: 'BUOY' | 'ANCHOR' | null;
   /** The poll option id the current user chose (null if none / anonymous). */
   myPollVote: string | null;
+  /**
+   * "You're not alone" count: other rejection/ghost Sinks about the same company
+   * in the last 30 days. Only populated on the single-Sink read; solidarity
+   * vibes, not a precise stat.
+   */
+  companyCohortCount?: number;
 }
 
 /** Private job-tracker (Phase 2). Owner-only — never a public/pseudonymous shape. */

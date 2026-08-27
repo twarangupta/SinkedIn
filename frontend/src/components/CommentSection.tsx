@@ -153,7 +153,8 @@ function CommentItem({
 }) {
   const replying = openReplyId === node.id;
   return (
-    <div className="space-y-2">
+    // `c-<id>` anchor target: notification links (/s/:id#c-<commentId>) scroll here.
+    <div id={`c-${node.id}`} className="scroll-mt-24 space-y-2">
       <div className="flex gap-2.5">
         <Avatar
           avatarId={node.user.avatarId}

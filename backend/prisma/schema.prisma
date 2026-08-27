@@ -37,8 +37,25 @@ model User {
   reports        Report[]
   bookmarks      Bookmark[]
   applications   Application[]
+  reactions      Reaction[]
   notifications      Notification[] @relation("NotificationRecipient") // received
   actedNotifications Notification[] @relation("NotificationActor") // triggered by this user
+}
+
+// One-tap solidarity reaction (Rant → "Been there", Ghosted → "Same"), separate
+// from Buoy/Anchor voting. One reaction per user per Sink; `kind` must be one of
+// the Sink's category's configured reaction keys (enforced in the service).
+model Reaction {
+  id        String   @id @default(uuid())
+  sinkId    String
+  sink      Sink     @relation(fields: [sinkId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  kind      String
+  createdAt DateTime @default(now())
+
+  @@unique([sinkId, userId]) // one reaction per user per Sink
+  @@index([sinkId])
 }
 
 // A Sink is a Reddit-style post: always a title + body, categorized by a category.
@@ -73,6 +90,12 @@ model Sink {
   notifiedBuoyMilestone Int @default(0)
   notifiedPollMilestone Int @default(0)
 
+  // Cached per-kind reaction tallies, e.g. { "BEEN_THERE": 5, "IKR": 2 } — kept
+  // fresh in the reaction service (like `score`) so the feed reads counts
+  // without a groupBy per card. The per-user Reaction rows below are the truth.
+  reactionCounts Json      @default("{}")
+  reactions      Reaction[]
+
   votes       Vote[]
   comments    Comment[]
   pollOptions PollOption[]
@@ -96,6 +119,11 @@ model Category {
   showsConclusion Boolean @default(false)
   allowsPoll      Boolean @default(false) // optional poll (Discussion, Advice)
   requiresPoll    Boolean @default(false) // poll mandatory (Poll category)
+  // One-tap solidarity reactions this category offers, as opaque presentational
+  // config: [{ "key": "BEEN_THERE", "emoji": "🫡", "label": "Been there" }].
+  // JSON (not a table) because it's small, variable, and never queried by field
+  // — adding/altering a category's reactions stays a pure data change.
+  reactions       Json?
   sinks           Sink[]
 }
 

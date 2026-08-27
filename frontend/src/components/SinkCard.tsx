@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { CategoryPill } from './CategoryPill';
 import { VoteControl } from './VoteControl';
 import { PollBlock } from './PollBlock';
+import { ReactionBar } from './ReactionBar';
 import { Avatar } from './avatar/Avatar';
 import { ExpandableText } from './ExpandableText';
 import { SinkComments } from './SinkComments';
@@ -99,6 +100,17 @@ export function SinkCard({
           options={sink.pollOptions}
           myPollVote={sink.myPollVote}
         />
+      )}
+
+      {sink.category.reactions && sink.category.reactions.length > 0 && (
+        <div className="mt-2">
+          <ReactionBar
+            sinkId={sink.id}
+            options={sink.category.reactions}
+            initialCounts={sink.reactionCounts}
+            initialMine={sink.myReaction}
+          />
+        </div>
       )}
 
       <footer className="mt-2 flex items-center gap-4 text-sm text-ink-3">
